@@ -17,7 +17,7 @@ public:
     ~DccCommand();
 
     void mode_off();
-    void mode_ops(bool railcom=false);
+    void mode_ops();
     void mode_svc_write_cv(int cv_num, uint8_t cv_val);
     void mode_svc_write_bit(int cv_num, int bit_num, int bit_val);
     void mode_svc_read_cv(int cv_num);

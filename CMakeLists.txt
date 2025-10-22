@@ -7,6 +7,7 @@ target_sources(dcc INTERFACE
     ${CMAKE_CURRENT_LIST_DIR}/src/dcc_command.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/dcc_pkt.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/dcc_throttle.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/dcc_railcom.cpp
 )
 
 target_include_directories(dcc INTERFACE 
@@ -21,5 +22,6 @@ target_link_libraries(dcc INTERFACE
     hardware_irq
     hardware_pwm
     hardware_sync
+    hardware_uart
     misc
 )

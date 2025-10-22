@@ -10,7 +10,13 @@
 // drives DCC
 
 #if 1
-// breadboard
+// breadboard 2
+static const int dcc_sig_gpio = 19; // PH
+static const int dcc_pwr_gpio = 18; // EN
+static const int dcc_slp_gpio = -1; // SLP
+static const int dcc_adc_gpio = 26; // CS (ADC0)
+#elif 0
+// breadboard 1
 static const int dcc_sig_gpio = 17; // PH
 static const int dcc_pwr_gpio = 16; // EN
 static const int dcc_slp_gpio = -1; // SLP

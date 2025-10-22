@@ -3,29 +3,47 @@
 #include "dcc_pkt.h"
 #include "dcc_spec.h"
 #include "hardware/pwm.h"
-#include "pico/stdlib.h"  // uint?
+#include "hardware/uart.h"
+#include "pico/stdlib.h"
+#include "dcc_railcom.h"
 
 class DccBitstream
 {
+
 public:
-    DccBitstream(int sig_gpio, int pwr_gpio);
+
+    DccBitstream(int sig_gpio, int pwr_gpio, uart_inst_t* uart = nullptr, int rc_gpio = -1);
     ~DccBitstream();
 
-    void start_ops(bool railcom=false);
+    void start_ops();
     void start_svc();
     void stop();
 
-    void railcom(bool railcom) { _railcom = railcom; }
+    inline bool need_packet()
+    {
+        return (_next == &_pkt_idle);
+    }
 
-    bool railcom() const { return _railcom; }
+    void send_packet(const DccPkt& pkt);
 
-    inline bool need_packet() { return (_next == &_pkt_idle); }
+    inline void send_reset()
+    {
+        send_packet(_pkt_reset);
+    }
 
-    void send_packet(const DccPkt &pkt);
-
-    inline void send_reset() { send_packet(_pkt_reset); }
+    const char *get_log_line() {
+        if (_log_get == _log_put)
+            return nullptr;
+        const char *p = _log[_log_get];
+        if (++_log_get >= log_line_cnt)
+            _log_get = 0;
+        return p;
+    }
 
 private:
+
+    DccRailcom _railcom;
+
     int _pwr_gpio;
 
     DccPktIdle _pkt_idle;
@@ -38,23 +56,21 @@ private:
     //   _next = _pkt_idle
     //   start packet at _current with _preamble_bits
 
-    DccPkt *_first;    // first _current to go
-    DccPkt *_current;  // never nullptr
-    DccPkt *_next;     // _pkt_idle if nothing to send
+    DccPkt* _first;    // first _current to go
+    DccPkt* _current;  // never nullptr
+    DccPkt* _next;     // _pkt_idle if nothing to send
 
     int _preamble_bits;
 
     uint _slice;    // uint to match pico-sdk
     uint _channel;  // uint to match pico-sdk
 
-    bool _railcom;  // do railcom cutout (or not)
-
     int _byte;  // -1 for preamble, then index in _current
     int _bit;   // counts down bit in preamble or _byte
 
-    void start(int preamble_bits, DccPkt &first);
+    void start(int preamble_bits, DccPkt& first);
 
-    inline void prog_bit(int b, int power_qtr=4)
+    inline void prog_bit(int b, int power_qtr = 4)
     {
         // Period is wrap+1 usec (pwm_hz = 1 MHz), and output is high for
         // count=[0...level-1], low for count=[level...wrap].
@@ -74,6 +90,12 @@ private:
 
     void next_bit();
 
-    static void pwm_handler(void *arg);
+    static const int log_line_len = 80;
+    static const int log_line_cnt = 16;
+    char _log[log_line_cnt][log_line_len];
+    int _log_put;
+    int _log_get;
+
+    static void pwm_handler(void* arg);
 
 };  // class DccBitstream

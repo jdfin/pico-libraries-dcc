@@ -971,6 +971,60 @@ uint8_t DccPktFunc21::get_funcs() const
 
 //----------------------------------------------------------------------------
 
+DccPktOpsReadCv::DccPktOpsReadCv(int adrs, int cv_num, uint8_t cv_val)
+{
+    xassert(address_min <= adrs && adrs <= address_max);
+    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);
+
+    refresh(adrs, cv_num, cv_val);
+}
+
+int DccPktOpsReadCv::set_address(int adrs)
+{
+    xassert(address_min <= adrs && adrs <= address_max);
+
+    refresh(adrs, get_cv_num(), get_cv_val());
+    return get_address_size();
+}
+
+void DccPktOpsReadCv::set_cv(int cv_num, uint8_t cv_val)
+{
+    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);  // 1..1024
+
+    cv_num--;                      // cv_num is encoded in messages as 0..1023
+    int idx = get_address_size();  // skip address (1 or 2 bytes)
+    _msg[idx++] = 0xec | (cv_num >> 8);  // 111011vv
+    _msg[idx++] = cv_num;                // vvvvvvvv
+    _msg[idx++] = cv_val;                // dddddddd
+    _msg_len = idx + 1;                  // total (with xor) 5 or 6 bytes
+    set_xor();
+}
+
+void DccPktOpsReadCv::refresh(int adrs, int cv_num, uint8_t cv_val)
+{
+    xassert(address_min <= adrs && adrs <= address_max);
+    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);  // 1..1024
+
+    (void)DccPkt::set_address(adrs);  // insert address (1 or 2 bytes)
+    set_cv(cv_num, cv_val);           // insert everything else
+}
+
+int DccPktOpsReadCv::get_cv_num() const
+{
+    int idx = get_address_size();           // skip address (1 or 2 bytes)
+    int cv_hi = _msg[idx++] & 0x03;         // get 2 hi bits
+    int cv_num = (cv_hi << 8) | _msg[idx];  // get 8 lo bits
+    return cv_num + 1;  // cv_num is 0..1023 in message, return 1..1024
+}
+
+uint8_t DccPktOpsReadCv::get_cv_val() const
+{
+    int idx = get_address_size() + 2;  // skip address, instruction, cv_num
+    return _msg[idx];
+}
+
+//----------------------------------------------------------------------------
+
 DccPktOpsWriteCv::DccPktOpsWriteCv(int adrs, int cv_num, uint8_t cv_val)
 {
     xassert(address_min <= adrs && adrs <= address_max);

@@ -10,8 +10,11 @@
 #include "dcc_throttle.h"
 #include "xassert.h"
 
+static uart_inst_t *rc_uart = uart0;
+static int rc_gpio = 17;
+
 DccCommand::DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc &adc) :
-    _bitstream(sig_gpio, pwr_gpio),
+    _bitstream(sig_gpio, pwr_gpio, rc_uart, rc_gpio),
     _adc(adc),
     _mode(MODE_OFF),
     _next_throttle(_throttles.begin()),
@@ -55,10 +58,10 @@ void DccCommand::mode_off()
     _bitstream.stop();
 }
 
-void DccCommand::mode_ops(bool railcom)
+void DccCommand::mode_ops()
 {
     _mode = MODE_OPS;
-    _bitstream.start_ops(railcom);
+    _bitstream.start_ops();
 }
 
 void DccCommand::mode_svc_write_cv(int cv_num, uint8_t cv_val)
@@ -157,6 +160,9 @@ void DccCommand::loop()
         _adc.loop();
         loop_svc_read_bit();
     }
+    const char *p = _bitstream.get_log_line();
+    if (p != nullptr)
+        printf("%s\n", p);
 }
 
 void DccCommand::loop_ops()

@@ -2,16 +2,22 @@
 
 #include <climits>
 #include <cstdint>
+#include <cstdio>
 
 #include "dbg_gpio.h"  // misc/include/
 #include "dcc_pkt.h"
+#include "dcc_railcom.h"
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "hardware/irq.h"
 #include "hardware/pwm.h"
 #include "hardware/sync.h"
+#include "hardware/uart.h"
 #include "pwm_irq_mux.h"  // misc/include/
 #include "xassert.h"
+
+#define LOG_DCC     1
+#define LOG_RAILCOM 1
 
 // PWM usage:
 //
@@ -45,7 +51,8 @@
 // by different channels of the same PWM slice (section 4.5.2 of the RP2040
 // datasheet). It does not matter which is channel A and which is channel B.
 
-DccBitstream::DccBitstream(int sig_gpio, int pwr_gpio) :
+DccBitstream::DccBitstream(int sig_gpio, int pwr_gpio, uart_inst_t* uart, int rc_gpio) :
+    _railcom(uart, rc_gpio),
     _pwr_gpio(pwr_gpio),
     _pkt_idle(),
     _pkt_reset(),
@@ -56,9 +63,10 @@ DccBitstream::DccBitstream(int sig_gpio, int pwr_gpio) :
     _preamble_bits(DccPkt::ops_preamble_bits),
     _slice(pwm_gpio_to_slice_num(sig_gpio)),
     _channel(pwm_gpio_to_channel(sig_gpio)),
-    _railcom(false),
     _byte(INT_MAX),  // set in start_*()
-    _bit(INT_MAX)    // set in start_*()
+    _bit(INT_MAX),   // set in start_*()
+    _log_put(0),
+    _log_get(0)
 {
     // DbgGpio::init({0});
 
@@ -75,6 +83,7 @@ DccBitstream::DccBitstream(int sig_gpio, int pwr_gpio) :
     xassert(pwm_gpio_to_channel(pwr_gpio) == (1 - _channel));
 
     gpio_set_function(pwr_gpio, GPIO_FUNC_PWM);
+
 }
 
 DccBitstream::~DccBitstream()
@@ -82,9 +91,8 @@ DccBitstream::~DccBitstream()
     stop();  // track power off, pwm output low
 }
 
-void DccBitstream::start_ops(bool railcom)
+void DccBitstream::start_ops()
 {
-    _railcom = railcom;
     start(DccPkt::ops_preamble_bits, _pkt_idle);
 }
 
@@ -93,7 +101,7 @@ void DccBitstream::start_svc()
     start(DccPkt::svc_preamble_bits, _pkt_reset);
 }
 
-void DccBitstream::start(int preamble_bits, DccPkt &first)
+void DccBitstream::start(int preamble_bits, DccPkt& first)
 {
     uint32_t sys_hz = clock_get_hz(clk_sys);
     const uint32_t pwm_hz = 1000000;  // 1 MHz; 1 usec/count
@@ -121,8 +129,8 @@ void DccBitstream::start(int preamble_bits, DccPkt &first)
 
     // first packet starts with preamble (no cutout)
     _byte = -1;
-    _bit = _preamble_bits - 1; // will send a preamble bit for
-                               // _bit = _preamble_bits-1...0
+    _bit = _preamble_bits - 1;  // will send a preamble bit for
+    // _bit = _preamble_bits-1...0
 
     next_bit();
 
@@ -139,14 +147,13 @@ void DccBitstream::stop()
     pwm_set_irq_enabled(_slice, false);
     // stop with output low (0% duty)
     pwm_set_chan_level(_slice, _channel, 0);
-    pwm_set_chan_level(_slice, 1 - _channel, 0); // enable low
+    pwm_set_chan_level(_slice, 1 - _channel, 0);  // enable low
     // Let the pwm keep running so it gets to the end of the current bit and
     // switches to the 0% duty cycle. If the bitstream starts again, it'll be
     // disabled while it is initialized.
-    _railcom = false;
 }
 
-void DccBitstream::send_packet(const DccPkt &pkt)
+void DccBitstream::send_packet(const DccPkt& pkt)
 {
     pwm_set_irq_enabled(_slice, false);
 
@@ -167,17 +174,20 @@ void DccBitstream::send_packet(const DccPkt &pkt)
     pwm_set_irq_enabled(_slice, true);
 }
 
-// called from the PWM IRQ handler
+// called from start(), then the PWM IRQ handler
 void DccBitstream::next_bit()
 {
     // byte=-2 is the cutout, byte=-1 is the preamble,
     // then byte=0,1,...msg_len-1 for the message bytes
     if (_byte == -2) {
         // doing railcom cutout
+        // _railcom should always be true here
         if (_bit == 4) {
             // first bit, power is on for a quarter bit time
             prog_bit(1, 1);
             _bit--;
+            // reset uart in case it got glitched
+            _railcom.reset();
         } else if (_bit > 0) {
             // continue cutout
             prog_bit(1, 0);
@@ -187,7 +197,7 @@ void DccBitstream::next_bit()
             xassert(_bit == 0);
             prog_bit(1, 4);
             _byte = -1;
-            _bit = _preamble_bits - 1; // just did the first preamble bit
+            _bit = _preamble_bits - 1;  // just did the first preamble bit
         }
     } else if (_byte == -1) {
         // sending preamble
@@ -196,6 +206,18 @@ void DccBitstream::next_bit()
             prog_bit(0);
             _byte = 0;
             _bit = 8 - 1;
+        } else if (_bit == (_preamble_bits - 1)) {
+            // The cutout just ended and we've started the first preamble bit.
+            // The first preamble bit was programmed on the previous interrupt.
+            _railcom.read();
+            // and continue preamble
+            prog_bit(1);
+            _bit--;
+#if LOG_RAILCOM
+            _railcom.dump(_log[_log_put], log_line_len);
+            if (++_log_put >= log_line_cnt)
+                _log_put = 0;
+#endif
         } else {
             // continue preamble
             prog_bit(1);
@@ -210,19 +232,25 @@ void DccBitstream::next_bit()
             if ((_byte + 1) == msg_len) {
                 // end of message, send 1
                 prog_bit(1);
+#if LOG_DCC
+                // _current is the message we just sent the stop bit for
+                _current->show(_log[_log_put], log_line_len);
+                if (++_log_put >= log_line_cnt)
+                    _log_put = 0;
+#endif
                 // next message
                 _current = _next;
                 _next = &_pkt_idle;
-                if (_railcom) {
-                    // cutout first, then preamble
-                    _byte = -2;
-                    _bit = 4;
-                } else {
-                    _byte = -1;  // preamble
-                    // stop bit counts as first bit of next preamble
-                    // will do _preamble_bits-2...0 more
-                    _bit = _preamble_bits - 2;
-                }
+#if 1 // railcom
+                // cutout first, then preamble
+                _byte = -2;
+                _bit = 4;
+#else // no railcom
+                _byte = -1;  // preamble
+                // stop bit counts as first bit of next preamble
+                // will do _preamble_bits-2...0 more
+                _bit = _preamble_bits - 2;
+#endif
             } else {
                 // more bytes in message, send 0
                 prog_bit(0);
@@ -237,11 +265,12 @@ void DccBitstream::next_bit()
     }
 }
 
-void DccBitstream::pwm_handler(void *arg)
+// interrupt handler
+void DccBitstream::pwm_handler(void* arg)
 {
     // DbgGpio g(0);
 
-    DccBitstream *me = (DccBitstream *)arg;
+    DccBitstream* me = (DccBitstream*)arg;
 
     me->next_bit();
 }

@@ -245,6 +245,19 @@ private:
     friend DccPkt create(const uint8_t *msg, int msg_len);
 };
 
+// 2.3.7.3 - Configuration Variable Access - Long Form (read/verify byte)
+class DccPktOpsReadCv : public DccPkt
+{
+public:
+    DccPktOpsReadCv(int adrs = 3, int cv_num = 1, uint8_t cv_val = 0);
+    virtual int set_address(int adrs) override;
+    void set_cv(int cv_num, uint8_t cv_val=0); // set cv num in message
+private:
+    void refresh(int adrs, int cv_num, uint8_t cv_val);
+    int get_cv_num() const;      // get from message
+    uint8_t get_cv_val() const;  // get from message
+};
+
 // 2.3.7.3 - Configuration Variable Access - Long Form (write byte)
 class DccPktOpsWriteCv : public DccPkt
 {
