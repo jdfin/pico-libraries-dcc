@@ -42,8 +42,9 @@ public:
 
     void loop();
 
-    DccThrottle *create_throttle();
-    void delete_throttle(DccThrottle *throttle);
+    DccThrottle *create_throttle(int address = DccPkt::address_default);
+    DccThrottle *delete_throttle(DccThrottle *throttle);
+    DccThrottle *delete_throttle(int address);
 
     void show();
 

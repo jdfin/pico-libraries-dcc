@@ -7,7 +7,7 @@
 class DccPkt
 {
 public:
-    DccPkt(const uint8_t *msg = nullptr, int msg_len = 0);
+    DccPkt(const uint8_t* msg = nullptr, int msg_len = 0);
 
     ~DccPkt()
     {
@@ -39,11 +39,17 @@ public:
         Unimplemented,
     };
 
-    virtual PktType get_type() const { return Invalid; }
+    virtual PktType get_type() const
+    {
+        return Invalid;
+    }
 
     void msg_len(int new_len);
 
-    int msg_len() const { return _msg_len; }
+    int msg_len() const
+    {
+        return _msg_len;
+    }
 
     uint8_t data(int idx) const;
 
@@ -54,13 +60,14 @@ public:
     void set_xor();
 
     bool check_xor() const;
-    static bool check_xor(const uint8_t *msg, int msg_len);
+    static bool check_xor(const uint8_t* msg, int msg_len);
 
     // loco address constraints
     static const int address_min = 1;          // 0 is broadcast
     static const int address_short_max = 127;  // 0x7f
     static const int address_max = 10239;      // 0x27ff
     static const int address_inv = INT_MAX;
+    static const int address_default = 3;
 
     static const int speed_min = -127;
     static const int speed_max = 127;
@@ -78,10 +85,10 @@ public:
     static const int cv_val_max = 255;
     static const int cv_val_inv = INT_MAX;
 
-    static bool is_svc_direct(const uint8_t *msg, int msg_len);
+    static bool is_svc_direct(const uint8_t* msg, int msg_len);
 
-    char *dump(char *buf, int buf_len) const;
-    char *show(char *buf, int buf_len) const;
+    char* dump(char* buf, int buf_len) const;
+    char* show(char* buf, int buf_len) const;
 
     // DCC Spec 9.2, section A ("preamble")
     static const int ops_preamble_bits = 14;
@@ -89,17 +96,17 @@ public:
     // DCC Spec 9.2.3, section E ("long preamble")
     static const int svc_preamble_bits = 20;
 
-    static PktType decode_type(const uint8_t *msg, int msg_len);
+    static PktType decode_type(const uint8_t* msg, int msg_len);
 
     // not sure what the "correct" way to do these is
     // return true and fill in the parameters if the packet is of the correct
     // type
-    bool decode_speed_128(int &speed) const;
-    bool decode_func_0(int *f) const;   // f[5] is f0..f4
-    bool decode_func_5(int *f) const;   // f[4] is f5..f8
-    bool decode_func_9(int *f) const;   // f[4] is f9..f12
-    bool decode_func_13(int *f) const;  // f[8] is f13..f20
-    bool decode_func_21(int *f) const;  // f[8] is f21..f28
+    bool decode_speed_128(int& speed) const;
+    bool decode_func_0(int* f) const;   // f[5] is f0..f4
+    bool decode_func_5(int* f) const;   // f[4] is f5..f8
+    bool decode_func_9(int* f) const;   // f[4] is f9..f12
+    bool decode_func_13(int* f) const;  // f[8] is f13..f20
+    bool decode_func_21(int* f) const;  // f[8] is f21..f28
 
 protected:
     static const int msg_max = 8;
@@ -108,11 +115,11 @@ protected:
 
     int _msg_len;
 
-    bool check_len_min(char *&b, char *e, int min_len) const;
-    bool check_len_is(char *&b, char *e, int len) const;
-    void show_cv_access(char *&b, char *e, uint8_t instr, int idx) const;
+    bool check_len_min(char*& b, char* e, int min_len) const;
+    bool check_len_is(char*& b, char* e, int len) const;
+    void show_cv_access(char*& b, char* e, uint8_t instr, int idx) const;
 
-    static PktType decode_payload(const uint8_t *pay, int pay_len);
+    static PktType decode_payload(const uint8_t* pay, int pay_len);
 
 };  // DccPkt
 
@@ -121,7 +128,10 @@ class DccPktIdle : public DccPkt
 {
 public:
     DccPktIdle();
-    virtual PktType get_type() const override { return Idle; }
+    virtual PktType get_type() const override
+    {
+        return Idle;
+    }
 };
 
 // 2.3.1.1 - Decoder Control
@@ -129,7 +139,10 @@ class DccPktReset : public DccPkt
 {
 public:
     DccPktReset();
-    virtual PktType get_type() const override { return Reset; }
+    virtual PktType get_type() const override
+    {
+        return Reset;
+    }
 };
 
 // 2.3.2.1 - 128 Speed Step Control
@@ -140,14 +153,16 @@ public:
     virtual int set_address(int adrs) override;
     int get_speed() const;
     void set_speed(int speed);
-    static bool is_type(const uint8_t *msg, int msg_len);
+    static bool is_type(const uint8_t* msg, int msg_len);
     static uint8_t int_to_dcc(int speed_int);
     static int dcc_to_int(uint8_t speed_dcc);
 
 private:
     void refresh(int adrs, int speed);
-    DccPktSpeed128(const uint8_t *msg, int msg_len) : DccPkt(msg, msg_len) {}
-    friend DccPkt create(const uint8_t *msg, int msg_len);
+    DccPktSpeed128(const uint8_t* msg, int msg_len) : DccPkt(msg, msg_len)
+    {
+    }
+    friend DccPkt create(const uint8_t* msg, int msg_len);
 };
 
 // 2.3.4 - Function Group One (F0-F4)
@@ -158,15 +173,17 @@ public:
     virtual int set_address(int adrs) override;
     bool get_f(int num) const;
     void set_f(int num, bool on);
-    static bool is_type(const uint8_t *msg, int msg_len);
+    static bool is_type(const uint8_t* msg, int msg_len);
 
 private:
     static const int f_min = 0;
     static const int f_max = 4;
     void refresh(int adrs, uint8_t funcs = 0);
-    DccPktFunc0(const uint8_t *msg, int msg_len) : DccPkt(msg, msg_len) {}
+    DccPktFunc0(const uint8_t* msg, int msg_len) : DccPkt(msg, msg_len)
+    {
+    }
     uint8_t get_funcs() const;
-    friend DccPkt create(const uint8_t *msg, int msg_len);
+    friend DccPkt create(const uint8_t* msg, int msg_len);
 };
 
 // 2.3.5 - Function Group Two (S-bit=1, F5-F8)
@@ -177,15 +194,17 @@ public:
     virtual int set_address(int adrs) override;
     bool get_f(int num) const;
     void set_f(int num, bool on);
-    static bool is_type(const uint8_t *msg, int msg_len);
+    static bool is_type(const uint8_t* msg, int msg_len);
 
 private:
     static const int f_min = 5;
     static const int f_max = 8;
     void refresh(int adrs, uint8_t funcs = 0);
-    DccPktFunc5(const uint8_t *msg, int msg_len) : DccPkt(msg, msg_len) {}
+    DccPktFunc5(const uint8_t* msg, int msg_len) : DccPkt(msg, msg_len)
+    {
+    }
     uint8_t get_funcs() const;
-    friend DccPkt create(const uint8_t *msg, int msg_len);
+    friend DccPkt create(const uint8_t* msg, int msg_len);
 };
 
 // 2.3.5 - Function Group Two (S-bit=0, F9-F12)
@@ -196,15 +215,17 @@ public:
     virtual int set_address(int adrs) override;
     bool get_f(int num) const;
     void set_f(int num, bool on);
-    static bool is_type(const uint8_t *msg, int msg_len);
+    static bool is_type(const uint8_t* msg, int msg_len);
 
 private:
     static const int f_min = 9;
     static const int f_max = 12;
     void refresh(int adrs, uint8_t funcs = 0);
-    DccPktFunc9(const uint8_t *msg, int msg_len) : DccPkt(msg, msg_len) {}
+    DccPktFunc9(const uint8_t* msg, int msg_len) : DccPkt(msg, msg_len)
+    {
+    }
     uint8_t get_funcs() const;
-    friend DccPkt create(const uint8_t *msg, int msg_len);
+    friend DccPkt create(const uint8_t* msg, int msg_len);
 };
 
 // 2.3.6.5 - F13-F20 Function Control
@@ -215,15 +236,17 @@ public:
     virtual int set_address(int adrs) override;
     bool get_f(int num) const;
     void set_f(int num, bool on);
-    static bool is_type(const uint8_t *msg, int msg_len);
+    static bool is_type(const uint8_t* msg, int msg_len);
 
 private:
     static const int f_min = 13;
     static const int f_max = 20;
     void refresh(int adrs, uint8_t funcs = 0);
-    DccPktFunc13(const uint8_t *msg, int msg_len) : DccPkt(msg, msg_len) {}
+    DccPktFunc13(const uint8_t* msg, int msg_len) : DccPkt(msg, msg_len)
+    {
+    }
     uint8_t get_funcs() const;
-    friend DccPkt create(const uint8_t *msg, int msg_len);
+    friend DccPkt create(const uint8_t* msg, int msg_len);
 };
 
 // 2.3.6.6 - F21-F28 Function Control
@@ -234,15 +257,17 @@ public:
     virtual int set_address(int adrs) override;
     bool get_f(int num) const;
     void set_f(int num, bool on);
-    static bool is_type(const uint8_t *msg, int msg_len);
+    static bool is_type(const uint8_t* msg, int msg_len);
 
 private:
     static const int f_min = 21;
     static const int f_max = 28;
     void refresh(int adrs, uint8_t funcs = 0);
-    DccPktFunc21(const uint8_t *msg, int msg_len) : DccPkt(msg, msg_len) {}
+    DccPktFunc21(const uint8_t* msg, int msg_len) : DccPkt(msg, msg_len)
+    {
+    }
     uint8_t get_funcs() const;
-    friend DccPkt create(const uint8_t *msg, int msg_len);
+    friend DccPkt create(const uint8_t* msg, int msg_len);
 };
 
 // 2.3.7.3 - Configuration Variable Access - Long Form (read/verify byte)
@@ -251,7 +276,7 @@ class DccPktOpsReadCv : public DccPkt
 public:
     DccPktOpsReadCv(int adrs = 3, int cv_num = 1, uint8_t cv_val = 0);
     virtual int set_address(int adrs) override;
-    void set_cv(int cv_num, uint8_t cv_val=0); // set cv num in message
+    void set_cv(int cv_num, uint8_t cv_val = 0); // set cv num in message
 private:
     void refresh(int adrs, int cv_num, uint8_t cv_val);
     int get_cv_num() const;      // get from message
@@ -276,7 +301,7 @@ class DccPktOpsWriteBit : public DccPkt
 {
 public:
     DccPktOpsWriteBit();
-    DccPktOpsWriteBit(int adrs, int cv_num, int bit_num, int bit_val);
+    DccPktOpsWriteBit(int adrs = address_default, int cv_num = 1, int bit_num = 0, int bit_val = 0);
     virtual int set_address(int adrs) override;
     void set_cv_bit(int cv_num, int bit_num, int bit_val);
 
@@ -321,4 +346,4 @@ public:
     void set_bit(int bit_num, int bit_val);
 };
 
-DccPkt create(const uint8_t *msg, int msg_len);
+DccPkt create(const uint8_t* msg, int msg_len);

@@ -6,7 +6,7 @@
 class DccThrottle {
 
 public:
-    DccThrottle();
+    DccThrottle(int address = DccPkt::address_default);
     ~DccThrottle();
 
     int get_address() const;

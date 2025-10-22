@@ -10,10 +10,10 @@
 #include "dcc_throttle.h"
 #include "xassert.h"
 
-static uart_inst_t *rc_uart = uart0;
+static uart_inst_t* rc_uart = uart0;
 static int rc_gpio = 17;
 
-DccCommand::DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc &adc) :
+DccCommand::DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc& adc) :
     _bitstream(sig_gpio, pwr_gpio, rc_uart, rc_gpio),
     _adc(adc),
     _mode(MODE_OFF),
@@ -44,7 +44,7 @@ DccCommand::DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc &adc) :
 
 DccCommand::~DccCommand()
 {
-    for (DccThrottle *throttle : _throttles) {
+    for (DccThrottle* throttle : _throttles) {
         _throttles.remove(throttle);
         delete throttle;
     }
@@ -120,7 +120,7 @@ void DccCommand::mode_svc_read_bit(int cv_num, int bit_num)
     _bitstream.start_svc();
 }
 
-bool DccCommand::svc_done(bool &result)
+bool DccCommand::svc_done(bool& result)
 {
     if (_svc_status == IN_PROGRESS)
         return false;
@@ -129,7 +129,7 @@ bool DccCommand::svc_done(bool &result)
     return true;
 }
 
-bool DccCommand::svc_done(bool &result, uint8_t &val)
+bool DccCommand::svc_done(bool& result, uint8_t& val)
 {
     if (_svc_status == IN_PROGRESS)
         return false;
@@ -160,7 +160,7 @@ void DccCommand::loop()
         _adc.loop();
         loop_svc_read_bit();
     }
-    const char *p = _bitstream.get_log_line();
+    const char* p = _bitstream.get_log_line();
     if (p != nullptr)
         printf("%s\n", p);
 }
@@ -496,19 +496,43 @@ void DccCommand::loop_svc_read_bit()
 
 }  // void DccCommand::loop_svc_read_bit
 
-DccThrottle *DccCommand::create_throttle()
+DccThrottle* DccCommand::create_throttle(int address)
 {
-    DccThrottle *throttle = new DccThrottle();
+    if (address < DccPkt::address_min || address > DccPkt::address_max)
+        return nullptr;
+
+    // if throttle for this address already exists, return it
+    for (DccThrottle* throttle : _throttles)
+        if (throttle->get_address() == address)
+            return throttle;
+
+    // otherwise create a new one
+    DccThrottle* throttle = new DccThrottle(address);
     _throttles.push_back(throttle);
+
     _next_throttle = _throttles.begin();
+
     return throttle;
 }
 
-void DccCommand::delete_throttle(DccThrottle *throttle)
+DccThrottle *DccCommand::delete_throttle(DccThrottle* throttle)
 {
     _throttles.remove(throttle);
     delete throttle;
     _next_throttle = _throttles.begin();
+    return *_throttles.begin();
+}
+
+DccThrottle *DccCommand::delete_throttle(int address)
+{
+    for (DccThrottle* throttle : _throttles) {
+        if (throttle->get_address() == address) {
+            delete_throttle(throttle);
+            return *_throttles.begin();
+        }
+    }
+    // not found
+    return *_throttles.begin();
 }
 
 void DccCommand::show()
@@ -516,7 +540,7 @@ void DccCommand::show()
     if (_throttles.empty()) {
         printf("no throttles\n");
     } else {
-        for (DccThrottle *throttle : _throttles) {
+        for (DccThrottle* throttle : _throttles) {
             printf("throttle:\n");
             throttle->show();
         }

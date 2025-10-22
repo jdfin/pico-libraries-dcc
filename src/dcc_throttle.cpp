@@ -4,18 +4,18 @@
 #include <cstdint>
 #include <cstdio>
 
-DccThrottle::DccThrottle()
-    : _pkt_speed()
-    , _pkt_func_0()
-    , _pkt_func_5()
-    , _pkt_func_9()
-    , _pkt_func_13()
-    , _pkt_func_21()
-    , _seq(0)
-    , _pkt_write_cv()
-    , _write_cv_cnt(0)
-    , _pkt_write_bit()
-    , _write_bit_cnt(0)
+DccThrottle::DccThrottle(int address) :
+    _pkt_speed(address),
+    _pkt_func_0(address),
+    _pkt_func_5(address),
+    _pkt_func_9(address),
+    _pkt_func_13(address),
+    _pkt_func_21(address),
+    _seq(0),
+    _pkt_write_cv(address),
+    _write_cv_cnt(0),
+    _pkt_write_bit(address),
+    _write_bit_cnt(0)
 {
 }
 
