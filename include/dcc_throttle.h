@@ -23,6 +23,9 @@ public:
 
     DccPkt next_packet();
 
+    // reset packet sequence to start (typically for debug purposes)
+    void restart() { _seq = 0; }
+
     void show();
 
 private:

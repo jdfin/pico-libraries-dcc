@@ -18,10 +18,17 @@ public:
 
     void mode_off();
     void mode_ops();
+
     void mode_svc_write_cv(int cv_num, uint8_t cv_val);
     void mode_svc_write_bit(int cv_num, int bit_num, int bit_val);
     void mode_svc_read_cv(int cv_num);
     void mode_svc_read_bit(int cv_num, int bit_num);
+
+    // Returns true if service mode operation is done, and result is set
+    // true (success) or false (failed). For read operations, use the one
+    // with val to get the result.
+    bool svc_done(bool &result);
+    bool svc_done(bool &result, uint8_t &val);
 
     enum Mode {
         MODE_OFF,
@@ -34,17 +41,13 @@ public:
 
     Mode mode() const { return _mode; }
 
-    // Returns true if service mode operation is done, and result is set
-    // true (success) or false (failed). For read operations, use the one
-    // with val to get the result.
-    bool svc_done(bool &result);
-    bool svc_done(bool &result, uint8_t &val);
-
     void loop();
 
+    DccThrottle *find_throttle(int address);
     DccThrottle *create_throttle(int address = DccPkt::address_default);
     DccThrottle *delete_throttle(DccThrottle *throttle);
     DccThrottle *delete_throttle(int address);
+    void restart_throttles();
 
     void show();
 
@@ -60,12 +63,16 @@ private:
     std::list<DccThrottle *>::iterator _next_throttle;
     void loop_ops();
 
-    // for MODE_SVC_*
-    enum {
+    // for CV operations
+    enum CvOp {
         IN_PROGRESS,
         SUCCESS,
         ERROR,
-    } _svc_status, _svc_status_next;
+    };
+
+    CvOp _ops_status, _ops_status_next;
+
+    CvOp _svc_status, _svc_status_next;
     uint16_t _ack_ma;
     static const uint16_t ack_inc_ma = 60;
 

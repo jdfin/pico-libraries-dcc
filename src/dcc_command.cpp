@@ -44,9 +44,9 @@ DccCommand::DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc& adc) :
 
 DccCommand::~DccCommand()
 {
-    for (DccThrottle* throttle : _throttles) {
-        _throttles.remove(throttle);
-        delete throttle;
+    for (DccThrottle* t : _throttles) {
+        _throttles.remove(t);
+        delete t;
     }
     _next_throttle = _throttles.begin();
 }
@@ -496,21 +496,30 @@ void DccCommand::loop_svc_read_bit()
 
 }  // void DccCommand::loop_svc_read_bit
 
+DccThrottle* DccCommand::find_throttle(int address)
+{
+    if (address < DccPkt::address_min || address > DccPkt::address_max)
+        return nullptr;
+
+    for (DccThrottle* t : _throttles)
+        if (t->get_address() == address)
+            return t;
+
+    // address not found
+    return nullptr;
+}
+
 DccThrottle* DccCommand::create_throttle(int address)
 {
     if (address < DccPkt::address_min || address > DccPkt::address_max)
         return nullptr;
 
-    // if throttle for this address already exists, return it
-    for (DccThrottle* throttle : _throttles)
-        if (throttle->get_address() == address)
-            return throttle;
-
-    // otherwise create a new one
-    DccThrottle* throttle = new DccThrottle(address);
-    _throttles.push_back(throttle);
-
-    _next_throttle = _throttles.begin();
+    DccThrottle* throttle = find_throttle(address);
+    if (throttle == nullptr) {
+        throttle = new DccThrottle(address);
+        _throttles.push_back(throttle);
+        restart_throttles();
+    }
 
     return throttle;
 }
@@ -519,7 +528,7 @@ DccThrottle *DccCommand::delete_throttle(DccThrottle* throttle)
 {
     _throttles.remove(throttle);
     delete throttle;
-    _next_throttle = _throttles.begin();
+    restart_throttles();
     return *_throttles.begin();
 }
 
@@ -533,6 +542,18 @@ DccThrottle *DccCommand::delete_throttle(int address)
     }
     // not found
     return *_throttles.begin();
+}
+
+void DccCommand::restart_throttles()
+{
+    _throttles.sort([](const DccThrottle* a, const DccThrottle* b) {
+        return a->get_address() < b->get_address();
+    });
+
+    for (DccThrottle* t : _throttles)
+        t->restart();
+
+    _next_throttle = _throttles.begin();
 }
 
 void DccCommand::show()
