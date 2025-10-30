@@ -19,14 +19,14 @@ public:
     void start_svc();
     void stop();
 
-    inline bool need_packet()
+    bool need_packet()
     {
         return (_next == &_pkt_idle);
     }
 
     void send_packet(const DccPkt& pkt);
 
-    inline void send_reset()
+    void send_reset()
     {
         send_packet(_pkt_reset);
     }
@@ -42,7 +42,7 @@ public:
 
 private:
 
-    DccRailcom _railcom;
+    DccRailCom _railcom;
 
     int _pwr_gpio;
 
@@ -70,7 +70,7 @@ private:
 
     void start(int preamble_bits, DccPkt& first);
 
-    inline void prog_bit(int b, int power_qtr = 4)
+    void prog_bit(int b, int power_qtr = 4)
     {
         // Period is wrap+1 usec (pwm_hz = 1 MHz), and output is high for
         // count=[0...level-1], low for count=[level...wrap].

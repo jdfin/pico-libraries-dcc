@@ -29,16 +29,49 @@ public:
     void show();
 
 private:
-    DccPktSpeed128 _pkt_speed;
-    DccPktFunc0 _pkt_func_0;
-    DccPktFunc5 _pkt_func_5;
-    DccPktFunc9 _pkt_func_9;
-    DccPktFunc13 _pkt_func_13;
-    DccPktFunc21 _pkt_func_21;
+    DccPktSpeed128 _pkt_speed;  // sent if seq even (0, 2, ... 16, 18)
+    DccPktFunc0 _pkt_func_0;    // seq == 1
+    DccPktFunc5 _pkt_func_5;    // seq == 3
+    DccPktFunc9 _pkt_func_9;    // seq == 5
+    DccPktFunc13 _pkt_func_13;  // seq == 7
+#if INCLUDE_DCC_FUNC_21
+    DccPktFunc21 _pkt_func_21;  // seq == 9
+#if INCLUDE_DCC_FUNC_29
+    DccPktFunc29 _pkt_func_29;  // seq == 11
+#if INCLUDE_DCC_FUNC_37
+    DccPktFunc37 _pkt_func_37;  // seq == 13
+#if INCLUDE_DCC_FUNC_45
+    DccPktFunc45 _pkt_func_45;  // seq == 15
+#if INCLUDE_DCC_FUNC_53
+    DccPktFunc53 _pkt_func_53;  // seq == 17
+#if INCLUDE_DCC_FUNC_61
+    DccPktFunc61 _pkt_func_61;  // seq == 19
+#endif
+#endif
+#endif
+#endif
+#endif
+#endif
 
     // where in packet sequence we are
+
+#if INCLUDE_DCC_FUNC_61
+    static const int seq_max = 20;
+#elif INCLUDE_DCC_FUNC_53
+    static const int seq_max = 18;
+#elif INCLUDE_DCC_FUNC_45
+    static const int seq_max = 16;
+#elif INCLUDE_DCC_FUNC_37
+    static const int seq_max = 14;
+#elif INCLUDE_DCC_FUNC_29
+    static const int seq_max = 12;
+#elif INCLUDE_DCC_FUNC_21
     static const int seq_max = 10;
-    int _seq; // _seq = 0..9
+#else
+    static const int seq_max = 8;
+#endif
+
+    int _seq; // _seq = 0 ... seq_max-1
 
     DccPktOpsWriteCv _pkt_write_cv;
     static const int write_cv_send_cnt = 5; // how many times to send it

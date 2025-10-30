@@ -3,6 +3,16 @@
 #include <climits>
 #include <cstdint>
 #include <cstring>
+#include "xassert.h"
+
+#define DCC_FUNC_MAX 31
+
+#define INCLUDE_DCC_FUNC_21 (DCC_FUNC_MAX >= 21)
+#define INCLUDE_DCC_FUNC_29 (DCC_FUNC_MAX >= 29)
+#define INCLUDE_DCC_FUNC_37 (DCC_FUNC_MAX >= 37)
+#define INCLUDE_DCC_FUNC_45 (DCC_FUNC_MAX >= 45)
+#define INCLUDE_DCC_FUNC_53 (DCC_FUNC_MAX >= 53)
+#define INCLUDE_DCC_FUNC_61 (DCC_FUNC_MAX >= 61)
 
 class DccPkt
 {
@@ -25,7 +35,24 @@ public:
         Func5,
         Func9,
         Func13,
+#if INCLUDE_DCC_FUNC_21
         Func21,
+#if INCLUDE_DCC_FUNC_29
+        Func29,
+#if INCLUDE_DCC_FUNC_37
+        Func37,
+#if INCLUDE_DCC_FUNC_45
+        Func45,
+#if INCLUDE_DCC_FUNC_53
+        Func53,
+#if INCLUDE_DCC_FUNC_61
+        Func61,
+#endif
+#endif
+#endif
+#endif
+#endif
+#endif
         OpsWriteCv,
         OpsWriteBit,
         SvcWriteCv,
@@ -63,27 +90,27 @@ public:
     static bool check_xor(const uint8_t* msg, int msg_len);
 
     // loco address constraints
-    static const int address_min = 1;          // 0 is broadcast
-    static const int address_short_max = 127;  // 0x7f
-    static const int address_max = 10239;      // 0x27ff
-    static const int address_inv = INT_MAX;
-    static const int address_default = 3;
+    static constexpr int address_min = 1;          // 0 is broadcast
+    static constexpr int address_short_max = 127;  // 0x7f
+    static constexpr int address_max = 10239;      // 0x27ff
+    static constexpr int address_inv = INT_MAX;
+    static constexpr int address_default = 3;
 
-    static const int speed_min = -127;
-    static const int speed_max = 127;
-    static const int speed_inv = INT_MAX;
+    static constexpr int speed_min = -127;
+    static constexpr int speed_max = 127;
+    static constexpr int speed_inv = INT_MAX;
 
-    static const int function_min = 0;
-    static const int function_max = 28;
+    static constexpr int function_min = 0;
+    static constexpr int function_max = DCC_FUNC_MAX;
 
-    static const int cv_num_min = 1;
-    static const int cv_num_max = 1024;
-    static const int cv_num_inv = INT_MAX;
+    static constexpr int cv_num_min = 1;
+    static constexpr int cv_num_max = 1024;
+    static constexpr int cv_num_inv = INT_MAX;
 
     // CV values can be specified as int8_t (-127..128) or uint8_t (0..255)
-    static const int cv_val_min = -127;
-    static const int cv_val_max = 255;
-    static const int cv_val_inv = INT_MAX;
+    static constexpr int cv_val_min = -127;
+    static constexpr int cv_val_max = 255;
+    static constexpr int cv_val_inv = INT_MAX;
 
     static bool is_svc_direct(const uint8_t* msg, int msg_len);
 
@@ -91,13 +118,14 @@ public:
     char* show(char* buf, int buf_len) const;
 
     // DCC Spec 9.2, section A ("preamble")
-    static const int ops_preamble_bits = 14;
+    static constexpr int ops_preamble_bits = 14;
 
     // DCC Spec 9.2.3, section E ("long preamble")
-    static const int svc_preamble_bits = 20;
+    static constexpr int svc_preamble_bits = 20;
 
     static PktType decode_type(const uint8_t* msg, int msg_len);
 
+    // dcc_spy uses these
     // not sure what the "correct" way to do these is
     // return true and fill in the parameters if the packet is of the correct
     // type
@@ -106,10 +134,27 @@ public:
     bool decode_func_5(int* f) const;   // f[4] is f5..f8
     bool decode_func_9(int* f) const;   // f[4] is f9..f12
     bool decode_func_13(int* f) const;  // f[8] is f13..f20
+#if INCLUDE_DCC_FUNC_21
     bool decode_func_21(int* f) const;  // f[8] is f21..f28
+#if INCLUDE_DCC_FUNC_29
+    bool decode_func_29(int* f) const;  // f[8] is f29..f36
+#if INCLUDE_DCC_FUNC_37
+    bool decode_func_37(int* f) const;  // f[8] is f37..f44
+#if INCLUDE_DCC_FUNC_45
+    bool decode_func_45(int* f) const;  // f[8] is f45..f52
+#if INCLUDE_DCC_FUNC_53
+    bool decode_func_53(int* f) const;  // f[8] is f53..f60
+#if INCLUDE_DCC_FUNC_61
+    bool decode_func_61(int* f) const;  // f[8] is f61..f68
+#endif
+#endif
+#endif
+#endif
+#endif
+#endif
 
 protected:
-    static const int msg_max = 8;
+    static constexpr int msg_max = 8;
 
     uint8_t _msg[msg_max];
 
@@ -176,8 +221,8 @@ public:
     static bool is_type(const uint8_t* msg, int msg_len);
 
 private:
-    static const int f_min = 0;
-    static const int f_max = 4;
+    static constexpr int f_min = 0;
+    static constexpr int f_max = 4;
     void refresh(int adrs, uint8_t funcs = 0);
     DccPktFunc0(const uint8_t* msg, int msg_len) : DccPkt(msg, msg_len)
     {
@@ -197,8 +242,8 @@ public:
     static bool is_type(const uint8_t* msg, int msg_len);
 
 private:
-    static const int f_min = 5;
-    static const int f_max = 8;
+    static constexpr int f_min = 5;
+    static constexpr int f_max = 8;
     void refresh(int adrs, uint8_t funcs = 0);
     DccPktFunc5(const uint8_t* msg, int msg_len) : DccPkt(msg, msg_len)
     {
@@ -218,8 +263,8 @@ public:
     static bool is_type(const uint8_t* msg, int msg_len);
 
 private:
-    static const int f_min = 9;
-    static const int f_max = 12;
+    static constexpr int f_min = 9;
+    static constexpr int f_max = 12;
     void refresh(int adrs, uint8_t funcs = 0);
     DccPktFunc9(const uint8_t* msg, int msg_len) : DccPkt(msg, msg_len)
     {
@@ -228,47 +273,119 @@ private:
     friend DccPkt create(const uint8_t* msg, int msg_len);
 };
 
+// F13 and higher are set by similar instructions
+
+template <uint8_t i_byte, int f_min>
+class DccPktFuncHi : public DccPkt
+{
+public:
+
+    DccPktFuncHi(int adrs = 3) {
+        xassert(address_min <= adrs && adrs <= address_max);
+        refresh(adrs);
+    }
+
+    virtual int set_address(int adrs) override
+    {
+        xassert(address_min <= adrs && adrs <= address_max);
+        refresh(adrs, get_funcs());
+        return get_address_size();
+    }
+
+    bool get_f(int num) const
+    {
+        xassert(f_min <= num && num <= (f_min + 7));
+        int idx = get_address_size() + 1;   // skip address and inst byte
+        uint8_t f_bit = 1 << (num - f_min); // bit for function
+        return (_msg[idx] & f_bit) != 0;
+    }
+
+    void set_f(int num, bool on)
+    {
+        xassert(f_min <= num && num <= (f_min + 7));
+
+        int idx = get_address_size() + 1;   // skip address and inst byte
+        uint8_t f_bit = 1 << (num - f_min); // bit for function
+        if (on)
+            _msg[idx] |= f_bit;
+        else
+            _msg[idx] &= ~f_bit;
+        set_xor();
+    }
+
+    static bool is_type(const uint8_t* msg, int msg_len)
+    {
+        if (msg_len < 1) return false;
+        uint8_t b0 = msg[0];
+        if (1 <= b0 && b0 <= 127)
+            return msg_len == 4 && msg[1] == i_byte &&
+                   DccPkt::check_xor(msg, msg_len);
+        else if (192 <= b0 && b0 <= 231)
+            return msg_len == 5 && msg[2] == i_byte &&
+                   DccPkt::check_xor(msg, msg_len);
+        else
+            return false;
+    }
+
+    static constexpr uint8_t inst_byte = i_byte;
+
+private:
+
+    void refresh(int adrs, uint8_t funcs = 0)
+    {
+        xassert(address_min <= adrs && adrs <= address_max);
+        int idx = DccPkt::set_address(adrs);    // 1 or 2 bytes
+        _msg[idx++] = i_byte;
+        _msg[idx++] = funcs;                    // f_min+7:f_min+6:...:f_min+1:f_min
+        _msg_len = idx + 1;                     // 4 or 5
+        set_xor();
+    }
+
+    DccPktFuncHi(const uint8_t* msg, int msg_len) : DccPkt(msg, msg_len)
+    {
+    }
+
+    uint8_t get_funcs() const
+    {
+        int idx = get_address_size() + 1;       // skip address and inst byte
+        return _msg[idx];                       // all 8 bits
+    }
+
+    friend DccPkt create(const uint8_t* msg, int msg_len);
+};
+
 // 2.3.6.5 - F13-F20 Function Control
-class DccPktFunc13 : public DccPkt
-{
-public:
-    DccPktFunc13(int adrs = 3);
-    virtual int set_address(int adrs) override;
-    bool get_f(int num) const;
-    void set_f(int num, bool on);
-    static bool is_type(const uint8_t* msg, int msg_len);
+typedef DccPktFuncHi<0xde, 13> DccPktFunc13;
 
-private:
-    static const int f_min = 13;
-    static const int f_max = 20;
-    void refresh(int adrs, uint8_t funcs = 0);
-    DccPktFunc13(const uint8_t* msg, int msg_len) : DccPkt(msg, msg_len)
-    {
-    }
-    uint8_t get_funcs() const;
-    friend DccPkt create(const uint8_t* msg, int msg_len);
-};
-
+#if INCLUDE_DCC_FUNC_21
 // 2.3.6.6 - F21-F28 Function Control
-class DccPktFunc21 : public DccPkt
-{
-public:
-    DccPktFunc21(int adrs = 3);
-    virtual int set_address(int adrs) override;
-    bool get_f(int num) const;
-    void set_f(int num, bool on);
-    static bool is_type(const uint8_t* msg, int msg_len);
+typedef DccPktFuncHi<0xdf, 21> DccPktFunc21;
 
-private:
-    static const int f_min = 21;
-    static const int f_max = 28;
-    void refresh(int adrs, uint8_t funcs = 0);
-    DccPktFunc21(const uint8_t* msg, int msg_len) : DccPkt(msg, msg_len)
-    {
-    }
-    uint8_t get_funcs() const;
-    friend DccPkt create(const uint8_t* msg, int msg_len);
-};
+#if INCLUDE_DCC_FUNC_29
+// 2.3.6.7 - F29-F36 Function Control
+typedef DccPktFuncHi<0xd8, 29> DccPktFunc29;
+
+#if INCLUDE_DCC_FUNC_37
+// 2.3.6.8 - F37-F44 Function Control
+typedef DccPktFuncHi<0xd9, 37> DccPktFunc37;
+
+#if INCLUDE_DCC_FUNC_45
+// 2.3.6.9 - F45-F52 Function Control
+typedef DccPktFuncHi<0xda, 45> DccPktFunc45;
+
+#if INCLUDE_DCC_FUNC_53
+// 2.3.6.10 - F53-F60 Function Control
+typedef DccPktFuncHi<0xdb, 53> DccPktFunc53;
+
+#if INCLUDE_DCC_FUNC_61
+// 2.3.6.11 - F61-F68 Function Control
+typedef DccPktFuncHi<0xdc, 61> DccPktFunc61;
+#endif
+#endif
+#endif
+#endif
+#endif
+#endif
 
 // 2.3.7.3 - Configuration Variable Access - Long Form (read/verify byte)
 class DccPktOpsReadCv : public DccPkt

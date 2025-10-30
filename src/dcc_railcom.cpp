@@ -7,6 +7,12 @@
 #include <cstdio>
 #include <cstring>
 
+#include "xassert.h"
+
+#include "dbg_gpio.h"
+
+static const int dbg_gpio = 21;
+
 //#define RAILCOM_VERSION 2012
 #define RAILCOM_VERSION 2021
 
@@ -14,7 +20,7 @@
 #error RAILCOM_VERSION UNKNOWN
 #endif
 
-const uint8_t DccRailcom::decode[UINT8_MAX + 1] = {
+const uint8_t DccRailCom::decode[UINT8_MAX + 1] = {
     inv, inv, inv, inv, inv, inv, inv, inv, // 0x00-0x07
     inv, inv, inv, inv, inv, inv, inv, // 0x08-0x0e
 #if RAILCOM_VERSION == 2012
@@ -67,21 +73,114 @@ const uint8_t DccRailcom::decode[UINT8_MAX + 1] = {
 };
 
 
-DccRailcom::DccRailcom(uart_inst_t* uart, int rx_gpio) :
+DccRailCom::DccRailCom(uart_inst_t* uart, int rx_gpio) :
     _uart(uart),
     _rx_gpio(rx_gpio)
 {
     if (_uart == nullptr || _rx_gpio < 0)
         return;
 
+    if (dbg_gpio >= 0)
+        DbgGpio::init(dbg_gpio);
+
     gpio_set_function(_rx_gpio, UART_FUNCSEL_NUM(_uart, _rx_gpio));
     uart_init(_uart, baud);
+
+    pkt_reset();
+    ch1_reset();
+    ch2_reset();
 }
 
-void DccRailcom::read()
+void DccRailCom::read()
 {
-    for (_pkt_len = 0; _pkt_len < pkt_max && uart_is_readable(_uart); _pkt_len++)
-        _pkt[_pkt_len] = uart_getc(_uart);
+    pkt_reset();
+    ch1_reset();
+    ch2_reset();
+
+    for (_pkt_len = 0; _pkt_len < pkt_max && uart_is_readable(_uart); _pkt_len++) {
+        _enc[_pkt_len] = uart_getc(_uart);
+        _dec[_pkt_len] = decode[_enc[_pkt_len]];
+        if (_dec[_pkt_len] == inv) {
+            _pkt_valid = false;
+            if (dbg_gpio >= 0) {
+                DbgGpio d(dbg_gpio); // scope trigger
+                // this seems to be needed to force construction of DbgGpio
+                [[maybe_unused]] volatile int i = 0;
+            }
+        }
+    }
+
+    if (_pkt_len != pkt_max) {
+        DbgGpio d(dbg_gpio);
+        [[maybe_unused]] volatile int i = 0;
+    }
+}
+
+// Split received packet into channel 1 and channel 2
+//
+// Channel 1 is by default always sent by all decoders that support RailCom,
+// but that can be disabled in the decoder. If there is more than one loco on
+// the same track, they will both send channel 1 and it will likely be junk.
+// We don't use it, but decoding it helps figure out where channel 2 starts.
+//
+// Channel 2 is only sent by the DCC-addressed decoder. If there is no decoder
+// at the DCC address of DCC packet, there will be no channel 2 data. If there
+// is an addressed decoder, it will send channel 2 data, but it is often
+// corrupted, presumably by dirty track and such. Observed corruption seems to
+// extra ones in the 4/8 encoding, implying the decoder was trying to send a
+// zero (>10 mA), but it did not get through (e.g. because of dirty track).
+// Multiple decoders at the same DCC address would also cause corruption, but
+// with excess zeros instead of excess ones. Channel 2 often does not need
+// the full 6 bytes. It would be possible to use information from channel 2
+// with only one byte, e.g. an ack, but a choice here is to require 6 valid
+// bytes to consider anything in channel 2 valid.
+//
+// If we got at least 2 bytes, see if the first two are valid channel 1 data.
+//
+// If we got a valid channel 1,
+//   try extracting 6 bytes of channel 2 data starting at byte 2,
+// else (channel 1 invalid),
+//   try extracting 6 bytes of channel 2 data starting at byte 0.
+//
+// If channel 1 failed due to corruption, channel 2 will also fail due to
+// corruption. If channel 1 failed because no decoder sent it (i.e. it is
+// disabled), we probably got 6 bytes and it's all channel 2.
+//
+// XXX Can we get less than 6 bytes of channel 2 data? ESU LokSound 5 fills
+//     out channel 2 to 6 bytes, but I don't think the spec requires that.
+//
+void DccRailCom::channelize()
+{
+    int ch2_start = 0;
+
+    // don't care about _pkt_valid; might still be able to extract something
+
+    // extract channel 1
+    ch1_reset();
+    if (_pkt_len >= 2 && _dec[0] < 0x40 && _dec[1] < 0x40) {
+        uint id = (_dec[0] >> 2) & 0x0f;
+        if (id == id_adr_hi || id == id_adr_lo) {
+            _ch1_id = id;
+            _ch1_data = ((_dec[0] << 6) | _dec[1]) & 0xff;
+            _ch1_valid = true;
+            ch2_start = 2;
+        }
+    }
+
+    // extract channel 2
+    _ch2_valid = true;
+    if ((ch2_start + ch2_len) != _pkt_len) {
+        ch2_reset();
+    } else {
+        for (int i = 0; i < ch2_len; i++) {
+            if (_dec[ch2_start + i] != inv) {
+                _ch2[i] = _dec[ch2_start + i];
+            } else {
+                ch2_reset();
+                break;
+            }
+        }
+    }
 }
 
 // for each byte:
@@ -93,7 +192,7 @@ void DccRailcom::read()
 //       show raw [hh]
 //     else
 //       show decoded bbbbbb
-char* DccRailcom::dump(char* buf, int buf_len) const
+char* DccRailCom::dump(char* buf, int buf_len) const
 {
     memset(buf, '\0', buf_len);
 
@@ -103,11 +202,11 @@ char* DccRailcom::dump(char* buf, int buf_len) const
     for (int i = 0; i < _pkt_len; i++) {
         if (i > 0)
             b += snprintf(b, e - b, " ");
-        uint8_t d = decode[_pkt[i]];
+        uint8_t d = decode[_enc[i]];
         if (d == inv) {
-            b += snprintf(b, e - b, "%02x", _pkt[i]);
+            b += snprintf(b, e - b, "%02x", _enc[i]);
         } else if (d >= 0x40) {
-            b += snprintf(b, e - b, "%02x", _pkt[i]);
+            b += snprintf(b, e - b, "%02x", _enc[i]);
         } else {
             for (uint8_t m = 0x20; m != 0; m >>= 1) {
                 b += snprintf(b, e - b, "%c", (d & m) != 0 ? '1' : '0');
@@ -118,69 +217,83 @@ char* DccRailcom::dump(char* buf, int buf_len) const
     return buf;
 }
 
-char* DccRailcom::show(char* buf, int buf_len) const
+char* DccRailCom::show(char* buf, int buf_len) const
 {
     memset(buf, '\0', buf_len);
-
-    if (!got_pkt())
-        return buf;
 
     char* b = buf;
     char* e = buf + buf_len;
 
-#if 0
-    // raw 4/8 encoded data
-    for (int i = 0; i < pkt_max; i++)
-        b += snprintf(b, e - b, "%02x ", uint(_pkt[i]));
-    b += snprintf(b, e - b, "| ");
-#endif
+    b += snprintf(b, e - b, "R ");
 
-    // decode (to 6 bits per byte)
-    uint8_t data[pkt_max];
-    for (int i = 0; i < pkt_max; i++)
-        data[i] = decode[_pkt[i]];
+    // it is expected that channelize() has been called before this
+    // XXX enforce
 
-#if 0
-    // decoded data (6 bits per byte)
-    for (int i = 0; i < pkt_max; i++)
-        b += snprintf(b, e - b, "%02x ", uint(data[i]));
-    b += snprintf(b, e - b, "| ");
-#endif
-
-    // channel 1
-    if (data[0] < 0x40 && data[1] < 0x40) {
-        uint id = (data[0] >> 2) & 0x0f;
-        uint d0 = ((data[0] << 6) | data[1]) & 0xff;
-        b += snprintf(b, e - b, "%u: %02x ", id, d0);
+    // show channel 1
+    if (_ch1_valid) {
+        b += snprintf(b, e - b, "%u: %02x | ", _ch1_id, _ch1_data);
     } else {
-        b += snprintf(b, e - b, "corrupt ");
+        b += snprintf(b, e - b, "/ch1/ | ");
     }
-    b += snprintf(b, e - b, "| ");
 
-    // channel 2
-    if (data[2] >= 0x40) {
-        if (data[2] == ack) {
-            b += snprintf(b, e - b, "ack ");
-        } else if (data[2] == nack) {
-            b += snprintf(b, e - b, "nack ");
-        } else if (data[2] == busy) {
-            b += snprintf(b, e - b, "busy ");
+    // show channel 2
+    if (_ch2_valid) {
+        if (_ch2[0] >= 0x40) {
+            if (_ch2[0] == ack) {
+                b += snprintf(b, e - b, "ack ");
+            } else if (_ch2[0] == nack) {
+                b += snprintf(b, e - b, "nak ");
+            } else if (_ch2[0] == busy) {
+                b += snprintf(b, e - b, "bsy ");
+            } else {
+                b += snprintf(b, e - b, "%02x ", uint(_ch2[0]));
+            }
         } else {
-            b += snprintf(b, e - b, "%02x ", uint(data[2]));
+            // first 4 bits are always ID
+            uint id = (_ch2[0] >> 2) & 0x0f;
+            if (id == 0) {
+                // POM
+                uint cv_val = ((_ch2[0] << 6) | _ch2[1]) & 0xff;
+                // Information is in _ch2[0..1]; _ch2[2..5] is unused.
+                // It is possible to write two CVs at once and get two of these in one response, but we're not there yet.
+                // Print ID and value.
+                b += snprintf(b, e - b, "%u: %02x ", id, cv_val);
+            } else if (id == 7) {
+                // DYN
+                // After ID comes 8 bits of data, then 6 bits of index, then maybe another ID/data/index.
+                // IDID DATADATA INDEXX IDID DATADATA INDEXX
+                // [  0  ][  1 ] [  2 ] [  3  ][  4 ] [  5 ]
+                uint val = ((_ch2[0] << 6) | _ch2[1]) & 0xff;
+                uint idx = _ch2[2];
+                b += snprintf(b, e - b, "%u: D=%u X=%u ", id, val, idx);
+                // another one?
+                id = (_ch2[3] >> 2) & 0x0f;
+                if (id == 7) {
+                    val = ((_ch2[3] << 6) | _ch2[4]) & 0xff;
+                    idx = _ch2[5];
+                    b += snprintf(b, e - b, "%u: D=%u X=%u ", id, val, idx);
+                }
+            } else {
+                // unexpected ID
+                b += snprintf(b, e - b, "%u: ?? ", id);
+            }
         }
     } else {
-        uint id = (data[2] >> 2) & 0x0f;
-        uint d0 = ((data[2] << 6) | data[3]) & 0xff;
-        if (id == 0) {
-            b += snprintf(b, e - b, "%u: %02x [%02x %02x %02x %02x]", id, d0, data[4], data[5], data[6], data[7]);
+        b += snprintf(b, e - b, "/ch2/ ");
+    }
+
+    if (!_pkt_valid || !_ch1_valid || !_ch2_valid) {
+        // print raw 4/8 encoded data and return
+        b += snprintf(b, e - b, "[ ");
+        if (_pkt_len > 0) {
+            for (int i = 0; i < _pkt_len; i++)
+                b += snprintf(b, e - b, "%02x ", uint(_enc[i]));
         } else {
-            uint d1 = ((data[4] << 2) | (data[5] >> 4)) & 0xff;
-            uint d2 = ((data[5] << 4) | (data[6] >> 2)) & 0xff;
-            uint d3 = ((data[6] << 6) | data[7]) & 0xff;
-            b += snprintf(b, e - b, "%u: %02x %02x %02x %02x ", id, d0, d1, d2, d3);
+            b += snprintf(b, e - b, "no data ");
         }
+        b += snprintf(b, e - b, "] ");
     }
 
     return buf;
 
-} // DccRailcom::show()
+} // DccRailCom::show()

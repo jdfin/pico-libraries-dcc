@@ -214,7 +214,8 @@ void DccBitstream::next_bit()
             prog_bit(1);
             _bit--;
 #if LOG_RAILCOM
-            _railcom.dump(_log[_log_put], log_line_len);
+            _railcom.channelize();
+            _railcom.show(_log[_log_put], log_line_len);
             if (++_log_put >= log_line_cnt)
                 _log_put = 0;
 #endif

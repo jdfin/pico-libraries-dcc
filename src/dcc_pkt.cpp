@@ -3,8 +3,11 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include "pico/types.h" // uint
 
 #include "xassert.h"
+
+#define PRINT_BRIEF 1
 
 DccPkt::DccPkt(const uint8_t *msg, int msg_len)
 {
@@ -227,25 +230,42 @@ bool DccPkt::decode_func_13(int *f) const  // f[8], f13..f20
     if (_msg_len != 4 && _msg_len != 5) return false;
     int idx = get_address_size();
     uint8_t instr = _msg[idx];
-    if (instr != 0xde) return false;
+    if (instr != DccPktFunc13::inst_byte) return false;
     idx++;
     uint8_t f_bits = _msg[idx];
     for (int b = 0; b < 8; b++) f[b] = (f_bits >> b) & 1;  // f13..f20
     return true;
 }
 
+#if INCLUDE_DCC_FUNC_21
 bool DccPkt::decode_func_21(int *f) const  // f[8], f21..f28
 {
     // address (1 or 2 bytes), instruction, f-bits, xor
     if (_msg_len != 4 && _msg_len != 5) return false;
     int idx = get_address_size();
     uint8_t instr = _msg[idx];
-    if (instr != 0xdf) return false;
+    if (instr != DccPktFunc21::inst_byte) return false;
     idx++;
     uint8_t f_bits = _msg[idx];
     for (int b = 0; b < 8; b++) f[b] = (f_bits >> b) & 1;  // f21..f28
     return true;
 }
+#endif
+
+#if INCLUDE_DCC_FUNC_29
+bool DccPkt::decode_func_29(int *f) const  // int f[8] is f29..f36
+{
+    // address (1 or 2 bytes), instruction, f-bits, xor
+    if (_msg_len != 4 && _msg_len != 5) return false;
+    int idx = get_address_size();
+    uint8_t instr = _msg[idx];
+    if (instr != DccPktFunc29::inst_byte) return false;
+    idx++;
+    uint8_t f_bits = _msg[idx];
+    for (int b = 0; b < 8; b++) f[b] = (f_bits >> b) & 1;  // f29..f36
+    return true;
+}
+#endif
 
 char *DccPkt::dump(char *buf, int buf_len) const
 {
@@ -281,6 +301,8 @@ char *DccPkt::show(char *buf, int buf_len) const
     char *b = buf;
     char *e = buf + buf_len;
 
+    b += snprintf(b, e - b, "D ");
+
     int idx = 0;
 
     if (!check_len_min(b, e, 2)) return buf;
@@ -293,7 +315,11 @@ char *DccPkt::show(char *buf, int buf_len) const
 
         // check for service mode packet
         if (is_svc_direct(_msg, _msg_len)) {
+#if PRINT_BRIEF
+            b += snprintf(b, e - b, "svc ");
+#else
             b += snprintf(b, e - b, "  svc: ");
+#endif
             // it's 4 bytes long with the correct constant bits
             show_cv_access(b, e, _msg[0], 1);
             return buf;
@@ -307,7 +333,11 @@ char *DccPkt::show(char *buf, int buf_len) const
         // idx is now the index of the first byte after the address
         xassert(idx == 1 || idx == 2);
 
+#if PRINT_BRIEF
+        b += snprintf(b, e - b, "%d ", adrs);
+#else
         b += snprintf(b, e - b, "%5d: ", adrs);
+#endif
 
         if (!check_len_min(b, e, idx + 2)) return buf;
 
@@ -323,64 +353,166 @@ char *DccPkt::show(char *buf, int buf_len) const
 
             int speed = _msg[idx++];
 
-            b += snprintf(b, e - b, "%s %d/128", speed & 0x80 ? "fwd" : "rev",
-                          speed & 0x7f);
+            if (speed & 0x80)
+                b += snprintf(b, e - b, "+%d/128", speed & 0x7f);
+            else
+                b += snprintf(b, e - b, "-%d/128", speed & 0x7f);
 
             if (!check_len_is(b, e, idx + 1)) return buf;
 
         } else if ((instr & 0xe0) == 0x80) {
+#if PRINT_BRIEF
+            uint bits = ((instr & 0x0f) << 1) | ((instr & 0x10) >> 4);
+            b += snprintf(b, e - b, "f0=%02x", bits);
+#else
             b += snprintf(b, e - b, "f0%c f1%c f2%c f3%c f4%c",
                           instr & 0x10 ? '+' : '-', instr & 0x01 ? '+' : '-',
                           instr & 0x02 ? '+' : '-', instr & 0x04 ? '+' : '-',
                           instr & 0x08 ? '+' : '-');
-
+#endif
             if (!check_len_is(b, e, idx + 1)) return buf;
 
         } else if ((instr & 0xf0) == 0xb0) {
+#if PRINT_BRIEF
+            b += snprintf(b, e - b, "f5=%02x", instr & 0x0f);
+#else
             b += snprintf(b, e - b, "f5%c f6%c f7%c f8%c",
                           instr & 0x01 ? '+' : '-', instr & 0x02 ? '+' : '-',
                           instr & 0x04 ? '+' : '-', instr & 0x08 ? '+' : '-');
-
+#endif
             if (!check_len_is(b, e, idx + 1)) return buf;
 
         } else if ((instr & 0xf0) == 0xa0) {
+#if PRINT_BRIEF
+            b += snprintf(b, e - b, "f9=%02x", instr & 0x0f);
+#else
             b += snprintf(b, e - b, "f9%c f10%c f11%c f12%c",
                           instr & 0x01 ? '+' : '-', instr & 0x02 ? '+' : '-',
                           instr & 0x04 ? '+' : '-', instr & 0x08 ? '+' : '-');
-
+#endif
             if (!check_len_is(b, e, idx + 1)) return buf;
 
         } else if ((instr & 0xf0) == 0xe0) {
             // ops mode cv access
             show_cv_access(b, e, instr, idx);
 
-        } else if (instr == 0xde) {
+        } else if (instr == DccPktFunc13::inst_byte) {
             if (!check_len_min(b, e, idx + 2)) return buf;
-
+#if PRINT_BRIEF
+            b += snprintf(b, e - b, "f13=%02x", uint(_msg[idx++]));
+#else
             uint8_t f = _msg[idx++];
-
             b += snprintf(b, e - b,
                           "f13%c f14%c f15%c f16%c f17%c f18%c f19%c f20%c",
                           f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-',
                           f & 0x04 ? '+' : '-', f & 0x08 ? '+' : '-',
                           f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
                           f & 0x40 ? '+' : '-', f & 0x80 ? '+' : '-');
-
+#endif
             if (!check_len_is(b, e, idx + 1)) return buf;
 
-        } else if (instr == 0xdf) {
+#if INCLUDE_DCC_FUNC_21
+        } else if (instr == DccPktFunc21::inst_byte) {
             if (!check_len_min(b, e, idx + 2)) return buf;
-
+#if PRINT_BRIEF
+            b += snprintf(b, e - b, "f21=%02x", uint(_msg[idx++]));
+#else
             uint8_t f = _msg[idx++];
-
             b += snprintf(b, e - b,
                           "f21%c f22%c f23%c f24%c f25%c f26%c f27%c f28%c",
                           f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-',
                           f & 0x04 ? '+' : '-', f & 0x08 ? '+' : '-',
                           f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
                           f & 0x40 ? '+' : '-', f & 0x80 ? '+' : '-');
-
+#endif
             if (!check_len_is(b, e, idx + 1)) return buf;
+#endif // INCLUDE_DCC_FUNC_21
+
+#if INCLUDE_DCC_FUNC_29
+        } else if (instr == DccPktFunc29::inst_byte) {
+            if (!check_len_min(b, e, idx + 2)) return buf;
+#if PRINT_BRIEF
+            b += snprintf(b, e - b, "f29=%02x", uint(_msg[idx++]));
+#else
+            uint8_t f = _msg[idx++];
+            b += snprintf(b, e - b,
+                          "f29%c f30%c f31%c f32%c f33%c f34%c f35%c f36%c",
+                          f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-',
+                          f & 0x04 ? '+' : '-', f & 0x08 ? '+' : '-',
+                          f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
+                          f & 0x40 ? '+' : '-', f & 0x80 ? '+' : '-');
+#endif
+            if (!check_len_is(b, e, idx + 1)) return buf;
+#endif // INCLUDE_DCC_FUNC_29
+
+#if INCLUDE_DCC_FUNC_37
+        } else if (instr == DccPktFunc37::inst_byte) {
+            if (!check_len_min(b, e, idx + 2)) return buf;
+#if PRINT_BRIEF
+            b += snprintf(b, e - b, "f37=%02x", uint(_msg[idx++]));
+#else
+            uint8_t f = _msg[idx++];
+            b += snprintf(b, e - b,
+                          "f37%c f38%c f39%c f40%c f41%c f42%c f43%c f44%c",
+                          f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-',
+                          f & 0x04 ? '+' : '-', f & 0x08 ? '+' : '-',
+                          f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
+                          f & 0x40 ? '+' : '-', f & 0x80 ? '+' : '-');
+#endif
+            if (!check_len_is(b, e, idx + 1)) return buf;
+#endif // INCLUDE_DCC_FUNC_37
+
+#if INCLUDE_DCC_FUNC_45
+        } else if (instr == DccPktFunc45::inst_byte) {
+            if (!check_len_min(b, e, idx + 2)) return buf;
+#if PRINT_BRIEF
+            b += snprintf(b, e - b, "f45=%02x", uint(_msg[idx++]));
+#else
+            uint8_t f = _msg[idx++];
+            b += snprintf(b, e - b,
+                          "f45%c f46%c f47%c f48%c f49%c f50%c f51%c f52%c",
+                          f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-',
+                          f & 0x04 ? '+' : '-', f & 0x08 ? '+' : '-',
+                          f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
+                          f & 0x40 ? '+' : '-', f & 0x80 ? '+' : '-');
+#endif
+            if (!check_len_is(b, e, idx + 1)) return buf;
+#endif // INCLUDE_DCC_FUNC_45
+
+#if INCLUDE_DCC_FUNC_53
+        } else if (instr == DccPktFunc53::inst_byte) {
+            if (!check_len_min(b, e, idx + 2)) return buf;
+#if PRINT_BRIEF
+            b += snprintf(b, e - b, "f53=%02x", uint(_msg[idx++]));
+#else
+            uint8_t f = _msg[idx++];
+            b += snprintf(b, e - b,
+                          "f53%c f54%c f55%c f56%c f57%c f58%c f59%c f60%c",
+                          f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-',
+                          f & 0x04 ? '+' : '-', f & 0x08 ? '+' : '-',
+                          f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
+                          f & 0x40 ? '+' : '-', f & 0x80 ? '+' : '-');
+#endif
+            if (!check_len_is(b, e, idx + 1)) return buf;
+#endif // INCLUDE_DCC_FUNC_53
+
+#if INCLUDE_DCC_FUNC_61
+        } else if (instr == DccPktFunc61::inst_byte) {
+            if (!check_len_min(b, e, idx + 2)) return buf;
+#if PRINT_BRIEF
+            b += snprintf(b, e - b, "f61=%02x", uint(_msg[idx++]));
+#else
+            uint8_t f = _msg[idx++];
+            b += snprintf(b, e - b,
+                          "f61%c f62%c f63%c f64%c f65%c f66%c f67%c f68%c",
+                          f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-',
+                          f & 0x04 ? '+' : '-', f & 0x08 ? '+' : '-',
+                          f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
+                          f & 0x40 ? '+' : '-', f & 0x80 ? '+' : '-');
+#endif
+            if (!check_len_is(b, e, idx + 1)) return buf;
+#endif // INCLUDE_DCC_FUNC_61
+
         }
 
     } else if (128 <= b0 && b0 < 192) {
@@ -496,24 +628,44 @@ void DccPkt::show_cv_access(char *&b, char *e, uint8_t instr, int idx) const
 
     if (op == 0) {
         // reserved
-        b += snprintf(b, e - b, "op=%d? (reserved)", op);
+#if PRINT_BRIEF
+        b += snprintf(b, e - b, "op=%d!", op);
+#else
+        b += snprintf(b, e - b, "op=%d! (reserved)", op);
+#endif
     } else if (op == 1) {
         // verify byte (expected in svc mode only)
+#if PRINT_BRIEF
+        b += snprintf(b, e - b, "cv%d=0x%02x?", cv, data);
+#else
         b += snprintf(b, e - b, "verify cv%d=0x%02x", cv, data);
+#endif
     } else if (op == 2) {
         // bit manipulation
         int bit = data & 0x07;         // 0..7
         int val = (data & 0x08) >> 3;  // 0..1
         if (data & 0x10) {
             // write bit
+#if PRINT_BRIEF
+            b += snprintf(b, e - b, "cv%d[%d]=%d", cv, bit, val);
+#else
             b += snprintf(b, e - b, "write cv%d bit%d=%d", cv, bit, val);
+#endif
         } else {
             // verify bit (expected in svc mode only)
+#if PRINT_BRIEF
+            b += snprintf(b, e - b, "cv%d[%d]=%d?", cv, bit, val);
+#else
             b += snprintf(b, e - b, "verify cv%d bit%d=%d", cv, bit, val);
+#endif
         }
     } else {  // op == 3
         // write byte
+#if PRINT_BRIEF
+        b += snprintf(b, e - b, "cv%d=0x%02x", cv, data);
+#else
         b += snprintf(b, e - b, "write cv%d=0x%02x", cv, data);
+#endif
     }
 
     (void)check_len_is(b, e, idx + 1);
@@ -827,146 +979,6 @@ uint8_t DccPktFunc9::get_funcs() const
 {
     int idx = get_address_size();  // skip address
     return _msg[idx] & 0x0f;       // lower 4 bits
-}
-
-//----------------------------------------------------------------------------
-
-DccPktFunc13::DccPktFunc13(int adrs)
-{
-    xassert(address_min <= adrs && adrs <= address_max);
-
-    refresh(adrs);
-}
-
-int DccPktFunc13::set_address(int adrs)
-{
-    xassert(address_min <= adrs && adrs <= address_max);
-
-    refresh(adrs, get_funcs());
-    return get_address_size();
-}
-
-bool DccPktFunc13::get_f(int num) const
-{
-    xassert(f_min <= num && num <= f_max);
-
-    int idx = get_address_size() + 1;    // skip address and inst byte
-    uint8_t f_bit = 1 << (num - f_min);  // bit for function
-    return (_msg[idx] & f_bit) != 0;
-}
-
-void DccPktFunc13::set_f(int num, bool on)
-{
-    xassert(f_min <= num && num <= f_max);
-
-    int idx = get_address_size() + 1;    // skip address and inst byte
-    uint8_t f_bit = 1 << (num - f_min);  // bit for function
-    if (on)
-        _msg[idx] |= f_bit;
-    else
-        _msg[idx] &= ~f_bit;
-    set_xor();
-}
-
-bool DccPktFunc13::is_type(const uint8_t *msg, int msg_len)
-{
-    if (msg_len < 1) return false;
-    uint8_t b0 = msg[0];
-    if (1 <= b0 && b0 <= 127)
-        return msg_len == 4 && msg[1] == 0xde &&
-               DccPkt::check_xor(msg, msg_len);
-    else if (192 <= b0 && b0 <= 231)
-        return msg_len == 5 && msg[2] == 0xde &&
-               DccPkt::check_xor(msg, msg_len);
-    else
-        return false;
-}
-
-void DccPktFunc13::refresh(int adrs, uint8_t funcs)
-{
-    xassert(address_min <= adrs && adrs <= address_max);
-
-    int idx = DccPkt::set_address(adrs);  // 1 or 2 bytes
-    _msg[idx++] = 0xde;                   // CCC=110 GGGGG=11110
-    _msg[idx++] = funcs;                  // f20:f19:f18:f17:f16:f15:f14:f13
-    _msg_len = idx + 1;                   // 4 or 5
-    set_xor();
-}
-
-uint8_t DccPktFunc13::get_funcs() const
-{
-    int idx = get_address_size() + 1;  // skip address and inst byte
-    return _msg[idx];                  // all 8 bits
-}
-
-//----------------------------------------------------------------------------
-
-DccPktFunc21::DccPktFunc21(int adrs)
-{
-    xassert(address_min <= adrs && adrs <= address_max);
-
-    refresh(adrs);
-}
-
-int DccPktFunc21::set_address(int adrs)
-{
-    xassert(address_min <= adrs && adrs <= address_max);
-
-    refresh(adrs, get_funcs());
-    return get_address_size();
-}
-
-bool DccPktFunc21::get_f(int num) const
-{
-    xassert(f_min <= num && num <= f_max);
-
-    int idx = get_address_size() + 1;    // skip address and inst byte
-    uint8_t f_bit = 1 << (num - f_min);  // bit for function
-    return (_msg[idx] & f_bit) != 0;
-}
-
-void DccPktFunc21::set_f(int num, bool on)
-{
-    xassert(f_min <= num && num <= f_max);
-
-    int idx = get_address_size() + 1;    // skip address and inst byte
-    uint8_t f_bit = 1 << (num - f_min);  // bit for function
-    if (on)
-        _msg[idx] |= f_bit;
-    else
-        _msg[idx] &= ~f_bit;
-    set_xor();
-}
-
-bool DccPktFunc21::is_type(const uint8_t *msg, int msg_len)
-{
-    if (msg_len < 1) return false;
-    uint8_t b0 = msg[0];
-    if (1 <= b0 && b0 <= 127)
-        return msg_len == 4 && msg[1] == 0xdf &&
-               DccPkt::check_xor(msg, msg_len);
-    else if (192 <= b0 && b0 <= 231)
-        return msg_len == 5 && msg[2] == 0xdf &&
-               DccPkt::check_xor(msg, msg_len);
-    else
-        return false;
-}
-
-void DccPktFunc21::refresh(int adrs, uint8_t funcs)
-{
-    xassert(address_min <= adrs && adrs <= address_max);
-
-    int idx = DccPkt::set_address(adrs);  // 1 or 2 bytes
-    _msg[idx++] = 0xdf;                   // CCC=110 GGGGG=11111
-    _msg[idx++] = funcs;                  // f28:f27:f26:f25:f24:f23:f22:f21
-    _msg_len = idx + 1;                   // 4 or 5
-    set_xor();
-}
-
-uint8_t DccPktFunc21::get_funcs() const
-{
-    int idx = get_address_size() + 1;  // skip address and inst byte
-    return _msg[idx];                  // all 8 bits
 }
 
 //----------------------------------------------------------------------------
@@ -1364,10 +1376,32 @@ DccPkt::PktType DccPkt::decode_payload(const uint8_t *pay, int pay_len)
     } else if (ccc == 6) {
         // 2.3.6 Feature Expansion
         uint8_t ggggg = pay[0] & 0x1f;
-        if (ggggg == 0x1e && pay_len == 3) {
+        if (ggggg == (DccPktFunc13::inst_byte & 0x1f) && pay_len == 3) {
             return Func13;
-        } else if (ggggg == 0x1f && pay_len == 3) {
+#if INCLUDE_DCC_FUNC_21
+        } else if (ggggg == (DccPktFunc21::inst_byte & 0x1f) && pay_len == 3) {
             return Func21;
+#endif
+#if INCLUDE_DCC_FUNC_29
+        } else if (ggggg == (DccPktFunc29::inst_byte & 0x1f) && pay_len == 3) {
+            return Func29;
+#endif
+#if INCLUDE_DCC_FUNC_37
+        } else if (ggggg == (DccPktFunc37::inst_byte & 0x1f) && pay_len == 3) {
+            return Func37;
+#endif
+#if INCLUDE_DCC_FUNC_45
+        } else if (ggggg == (DccPktFunc45::inst_byte & 0x1f) && pay_len == 3) {
+            return Func45;
+#endif
+#if INCLUDE_DCC_FUNC_53
+        } else if (ggggg == (DccPktFunc53::inst_byte & 0x1f) && pay_len == 3) {
+            return Func53;
+#endif
+#if INCLUDE_DCC_FUNC_61
+        } else if (ggggg == (DccPktFunc61::inst_byte & 0x1f) && pay_len == 3) {
+            return Func61;
+#endif
         } else {
             return Unimplemented;
         }

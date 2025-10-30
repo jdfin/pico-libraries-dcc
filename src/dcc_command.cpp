@@ -1,5 +1,6 @@
 #include "dcc_command.h"
 
+#include <cctype>
 #include <cstdint>
 #include <cstdio>
 #include <list>
@@ -161,8 +162,29 @@ void DccCommand::loop()
         loop_svc_read_bit();
     }
     const char* p = _bitstream.get_log_line();
-    if (p != nullptr)
-        printf("%s\n", p);
+    if (p != nullptr) {
+        // DCC packets start with "D ", RailCom packets start with "R ".
+        // They should alternate. Print the DCC packet and keep track of how
+        // many columns were printed, then tab over for the RailCom packet.
+        const int dcc_cols = 16;
+        static int dcc_last = 0;
+        if (p[0] == 'D' && p[1] == ' ') {
+            // DCC packet
+            dcc_last = printf("%s", p+2);
+        } else if (p[0] == 'R' && p[1] == ' ') {
+            // RailCom packet - tab over, then print
+            for (int i = dcc_last; i < dcc_cols; i++)
+                printf(" ");
+            printf("%s\n", p+2);
+            dcc_last = 0;
+        } else {
+            // Unknown - just print it, always on a new line
+            if (dcc_last > 0)
+                printf("\n");
+            printf("%s\n", p);
+            dcc_last = 0;
+        }
+    }
 }
 
 void DccCommand::loop_ops()
