@@ -175,11 +175,12 @@ int RailComMsg::show(char* buf, int buf_len) const
 
 const char *RailComMsg::id_name() const
 {
-    static constexpr uint id_max = uint(MsgId::inv) + 1;
-    static constexpr uint name_max = 8;
+    static constexpr int id_max = int(MsgId::inv) + 1;
+    static constexpr int name_max = 4;
     static char names[id_max][name_max] = {
-        "ACK", "NAK", "BSY", "POM", "AHI", "ALO", "EXT", "DYN", "XPOM", "INV"
+    //  ack  nak  bsy  pom  ahi  alo  ext  dyn xpom  inv
+        "A", "N", "B", "P", "H", "L", "E", "D", "X", "I"
     };
-    xassert(uint(id) < id_max);
-    return names[uint(id)];
+    xassert(int(id) < id_max);
+    return names[int(id)];
 }
