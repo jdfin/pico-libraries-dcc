@@ -29,6 +29,8 @@ DccThrottle::DccThrottle(int address) :
 #endif
 #endif
     _seq(0),
+    _pkt_read_cv(address),
+    _read_cv_cnt(0),
     _pkt_write_cv(address),
     _write_cv_cnt(0),
     _pkt_write_bit(address),
@@ -179,6 +181,22 @@ void DccThrottle::set_function(int num, bool on)
     }
 }
 
+// ops mode cv access
+
+void DccThrottle::read_cv(int cv_num)
+{
+    _pkt_read_cv.set_cv(cv_num);
+    _read_cv_cnt = read_cv_send_cnt;
+}
+
+void DccThrottle::read_bit(int /*cv_num*/, int /*bit_num*/)
+{
+#if 0
+    _pkt_read_bit.set_cv_bit(cv_num, bit_num);
+    _read_bit_cnt = read_bit_send_cnt;
+#endif
+}
+
 void DccThrottle::write_cv(int cv_num, uint8_t cv_val)
 {
     _pkt_write_cv.set_cv(cv_num, cv_val);
@@ -204,6 +222,11 @@ void DccThrottle::write_bit(int cv_num, int bit_num, int bit_val)
 DccPkt DccThrottle::next_packet()
 {
     xassert(0 <= _seq && _seq < seq_max);
+
+    if (_read_cv_cnt > 0) {
+        _read_cv_cnt--;
+        return _pkt_read_cv;
+    }
 
     if (_write_cv_cnt > 0) {
         _write_cv_cnt--;

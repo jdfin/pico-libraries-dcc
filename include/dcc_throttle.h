@@ -18,6 +18,9 @@ public:
     bool get_function(int func) const;
     void set_function(int func, bool on);
 
+    void read_cv(int cv_num);
+    void read_bit(int cv_num, int bit_num);
+
     void write_cv(int cv_num, uint8_t cv_val);
     void write_bit(int cv_num, int bit_num, int bit_val);
 
@@ -72,6 +75,16 @@ private:
 #endif
 
     int _seq; // _seq = 0 ... seq_max-1
+
+    DccPktOpsReadCv _pkt_read_cv;
+    static const int read_cv_send_cnt = 5; // how many times to send it
+    int _read_cv_cnt; // times left to send it (5, 4, ... 1, 0)
+
+#if 0
+    DccPktOpsReadBit _pkt_read_bit;
+    static const int read_bit_send_cnt = 5; // how many times to send it
+    int _read_bit_cnt; // times left to send it (5, 4, ... 1, 0)
+#endif
 
     DccPktOpsWriteCv _pkt_write_cv;
     static const int write_cv_send_cnt = 5; // how many times to send it

@@ -6,7 +6,7 @@
 
 #include "dbg_gpio.h"  // misc/include/
 #include "dcc_pkt.h"
-#include "dcc_railcom.h"
+#include "railcom.h"
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "hardware/irq.h"
@@ -221,10 +221,14 @@ void DccBitstream::next_bit()
             // On the first call from start(), _current is nullptr.
             // Thereafter, _current is always set from _next, so is never nullptr.
             if (_current != nullptr) {
-                _railcom.channelize();
-                _railcom.show(_log[_log_put], log_line_len);
+                _railcom.parse();
+                _railcom./*dump*/show(_log[_log_put], log_line_len);
                 if (++_log_put >= log_line_cnt)
                     _log_put = 0;
+                // _current still points to the packet just before the cutout.
+                if (_current->get_type() == DccPkt::OpsRead1Cv) {
+                    // XXX
+                }
             }
 #endif
         } else {
@@ -236,7 +240,7 @@ void DccBitstream::next_bit()
         // sending message bytes
         xassert(_byte >= 0);
         if (_byte == 0 && _bit == (8 - 1)) {
-            // time for the first bit of the first byte
+            // time for the first bit of the first byte of the next packet
             _current = _next;
             _next = &_pkt_idle;
         }

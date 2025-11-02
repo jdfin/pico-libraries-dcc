@@ -170,18 +170,18 @@ void DccCommand::loop()
         static int dcc_last = 0;
         if (p[0] == 'D' && p[1] == ' ') {
             // DCC packet
-            dcc_last = printf("%s", p+2);
+            dcc_last = printf("%s", p+2); // p+2 to skip "D "
         } else if (p[0] == 'R' && p[1] == ' ') {
             // RailCom packet - tab over, then print
             for (int i = dcc_last; i < dcc_cols; i++)
                 printf(" ");
-            printf("%s\n", p+2);
+            printf("%s\n", p+2); // p+2 to skip "R "
             dcc_last = 0;
         } else {
             // Unknown - just print it, always on a new line
             if (dcc_last > 0)
                 printf("\n");
-            printf("%s\n", p);
+            printf("{%s}\n", p);
             dcc_last = 0;
         }
     }

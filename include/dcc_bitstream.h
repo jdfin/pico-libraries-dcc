@@ -5,7 +5,7 @@
 #include "hardware/pwm.h"
 #include "hardware/uart.h"
 #include "pico/stdlib.h"
-#include "dcc_railcom.h"
+#include "railcom.h"
 
 class DccBitstream
 {
@@ -42,7 +42,7 @@ public:
 
 private:
 
-    DccRailCom _railcom;
+    RailCom _railcom;
 
     int _pwr_gpio;
 

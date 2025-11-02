@@ -328,6 +328,8 @@ char *DccPkt::show(char *buf, int buf_len) const
             if (!check_len_min(b, e, idx + 2)) return buf;
             uint8_t b1 = _msg[idx++];
             adrs = ((adrs & 0x3f) << 8) | b1;
+        } else {
+            // adrs is already the short address
         }
 
         // idx is now the index of the first byte after the address
@@ -612,11 +614,11 @@ void DccPkt::show_cv_access(char *&b, char *e, uint8_t instr, int idx) const
 {
     // svc mode: instr is 0111_GGAA
     // ops mode: instr is 1110_GGAA
-    // GG is the operation (1, 2, or 3)
+    // GG is the operation
     // AA is bits 8 and 9 of the cv number
     xassert((instr & 0xf0) == 0x70 || (instr & 0xf0) == 0xe0);
 
-    int op = (instr & 0x0c) >> 2;  // 1, 2, or 3
+    int op = (instr & 0x0c) >> 2;
     int cv = instr & 0x03;
     cv = (cv << 8) | _msg[idx];
     idx++;
@@ -625,46 +627,42 @@ void DccPkt::show_cv_access(char *&b, char *e, uint8_t instr, int idx) const
     uint8_t data = _msg[idx];
     idx++;
 
-    if (op == 0) {
-        // reserved
-#if PRINT_BRIEF
+    instr &= 0xfc;
+
+    if (instr == 0x70) {
+        // service mode, reserved
         b += snprintf(b, e - b, "op=%d!", op);
-#else
-        b += snprintf(b, e - b, "op=%d! (reserved)", op);
-#endif
-    } else if (op == 1) {
-        // verify byte (expected in svc mode only)
-#if PRINT_BRIEF
+    } else if (instr == 0x74) {
+        // service mode, verify byte
         b += snprintf(b, e - b, "cv%d=0x%02x?", cv, data);
-#else
-        b += snprintf(b, e - b, "verify cv%d=0x%02x", cv, data);
-#endif
-    } else if (op == 2) {
-        // bit manipulation
+    } else if (instr == 0x78) {
+        // service mode, write or verify bit
         int bit = data & 0x07;         // 0..7
         int val = (data & 0x08) >> 3;  // 0..1
         if (data & 0x10) {
             // write bit
-#if PRINT_BRIEF
             b += snprintf(b, e - b, "cv%d[%d]=%d", cv, bit, val);
-#else
-            b += snprintf(b, e - b, "write cv%d bit%d=%d", cv, bit, val);
-#endif
         } else {
-            // verify bit (expected in svc mode only)
-#if PRINT_BRIEF
+            // verify bit
             b += snprintf(b, e - b, "cv%d[%d]=%d?", cv, bit, val);
-#else
-            b += snprintf(b, e - b, "verify cv%d bit%d=%d", cv, bit, val);
-#endif
         }
-    } else {  // op == 3
-        // write byte
-#if PRINT_BRIEF
+    } else if (instr == 0x7c) {
+        // service mode, write byte
         b += snprintf(b, e - b, "cv%d=0x%02x", cv, data);
-#else
-        b += snprintf(b, e - b, "write cv%d=0x%02x", cv, data);
-#endif
+    } else if (instr == 0xe0) {
+        // ops mode, read 4 bytes
+        b += snprintf(b, e - b, "cv%d+?", cv);
+    } else if (instr == 0xe4) {
+        // ops mode, read 1 byte
+        b += snprintf(b, e - b, "cv%d?", cv);
+    } else if (instr == 0xe8) {
+        // ops mode, write bit
+        int bit = data & 0x07;         // 0..7
+        int val = (data & 0x08) >> 3;  // 0..1
+        b += snprintf(b, e - b, "cv%d[%d]=%d", cv, bit, val);
+    } else if (instr == 0xec) {
+        // ops mode write byte
+        b += snprintf(b, e - b, "cv%d=0x%02x", cv, data);
     }
 
     (void)check_len_is(b, e, idx + 1);
@@ -982,42 +980,42 @@ uint8_t DccPktFunc9::get_funcs() const
 
 //----------------------------------------------------------------------------
 
-DccPktOpsReadCv::DccPktOpsReadCv(int adrs, int cv_num, uint8_t cv_val)
+DccPktOpsReadCv::DccPktOpsReadCv(int adrs, int cv_num)
 {
     xassert(address_min <= adrs && adrs <= address_max);
     xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);
 
-    refresh(adrs, cv_num, cv_val);
+    refresh(adrs, cv_num);
 }
 
 int DccPktOpsReadCv::set_address(int adrs)
 {
     xassert(address_min <= adrs && adrs <= address_max);
 
-    refresh(adrs, get_cv_num(), get_cv_val());
+    refresh(adrs, get_cv_num());
     return get_address_size();
 }
 
-void DccPktOpsReadCv::set_cv(int cv_num, uint8_t cv_val)
+void DccPktOpsReadCv::set_cv(int cv_num)
 {
     xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);  // 1..1024
 
     cv_num--;                      // cv_num is encoded in messages as 0..1023
     int idx = get_address_size();  // skip address (1 or 2 bytes)
-    _msg[idx++] = 0xec | (cv_num >> 8);  // 111011vv
+    _msg[idx++] = 0xe4 | (cv_num >> 8);  // 111001vv
     _msg[idx++] = cv_num;                // vvvvvvvv
-    _msg[idx++] = cv_val;                // dddddddd
+    _msg[idx++] = 0;                     // 0
     _msg_len = idx + 1;                  // total (with xor) 5 or 6 bytes
     set_xor();
 }
 
-void DccPktOpsReadCv::refresh(int adrs, int cv_num, uint8_t cv_val)
+void DccPktOpsReadCv::refresh(int adrs, int cv_num)
 {
     xassert(address_min <= adrs && adrs <= address_max);
     xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);  // 1..1024
 
     (void)DccPkt::set_address(adrs);  // insert address (1 or 2 bytes)
-    set_cv(cv_num, cv_val);           // insert everything else
+    set_cv(cv_num);                   // insert everything else
 }
 
 int DccPktOpsReadCv::get_cv_num() const
@@ -1026,12 +1024,6 @@ int DccPktOpsReadCv::get_cv_num() const
     int cv_hi = _msg[idx++] & 0x03;         // get 2 hi bits
     int cv_num = (cv_hi << 8) | _msg[idx];  // get 8 lo bits
     return cv_num + 1;  // cv_num is 0..1023 in message, return 1..1024
-}
-
-uint8_t DccPktOpsReadCv::get_cv_val() const
-{
-    int idx = get_address_size() + 2;  // skip address, instruction, cv_num
-    return _msg[idx];
 }
 
 //----------------------------------------------------------------------------
@@ -1336,7 +1328,7 @@ DccPkt::PktType DccPkt::decode_type(const uint8_t *msg, int msg_len)
 DccPkt::PktType DccPkt::decode_payload(const uint8_t *pay, int pay_len)
 {
     xassert(pay_len >= 1);
-    uint8_t ccc = (pay[0] >> 5) & 0x07;
+    uint8_t ccc = (pay[0] & 0xe0) >> 5; // top three bits
     if (ccc == 0) {
         // 2.3.1 Decoder and Consist Control
         return Unimplemented;
@@ -1414,16 +1406,16 @@ DccPkt::PktType DccPkt::decode_payload(const uint8_t *pay, int pay_len)
                 // Long form
                 uint8_t gg = (p0 >> 2) & 0x3;
                 if (gg == 0) {
-                    return Reserved;
+                    return OpsRead4Cv;
                 } else if (gg == 1) {
-                    return Unimplemented;
+                    return OpsRead1Cv;
                 } else if (gg == 2) {
                     return OpsWriteBit;
                 } else {  // (gg == 3)
                     return OpsWriteCv;
                 }
             } else {
-                return Unimplemented;  // xpom
+                return Unimplemented;  // fancier xpom
             }
         }
     }

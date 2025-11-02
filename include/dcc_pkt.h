@@ -53,6 +53,8 @@ public:
 #endif
 #endif
 #endif
+        OpsRead1Cv,
+        OpsRead4Cv,
         OpsWriteCv,
         OpsWriteBit,
         SvcWriteCv,
@@ -391,13 +393,16 @@ typedef DccPktFuncHi<0xdc, 61> DccPktFunc61;
 class DccPktOpsReadCv : public DccPkt
 {
 public:
-    DccPktOpsReadCv(int adrs = 3, int cv_num = 1, uint8_t cv_val = 0);
+    DccPktOpsReadCv(int adrs = 3, int cv_num = 1);
     virtual int set_address(int adrs) override;
-    void set_cv(int cv_num, uint8_t cv_val = 0); // set cv num in message
+    void set_cv(int cv_num); // set cv num in message
+    virtual PktType get_type() const override
+    {
+        return OpsRead1Cv;
+    }
 private:
-    void refresh(int adrs, int cv_num, uint8_t cv_val);
+    void refresh(int adrs, int cv_num);
     int get_cv_num() const;      // get from message
-    uint8_t get_cv_val() const;  // get from message
 };
 
 // 2.3.7.3 - Configuration Variable Access - Long Form (write byte)
@@ -407,6 +412,10 @@ public:
     DccPktOpsWriteCv(int adrs = 3, int cv_num = 1, uint8_t cv_val = 0);
     virtual int set_address(int adrs) override;
     void set_cv(int cv_num, uint8_t cv_val);  // set in message
+    virtual PktType get_type() const override
+    {
+        return OpsWriteCv;
+    }
 private:
     void refresh(int adrs, int cv_num, uint8_t cv_val);
     int get_cv_num() const;      // get from message
@@ -421,7 +430,10 @@ public:
     DccPktOpsWriteBit(int adrs = address_default, int cv_num = 1, int bit_num = 0, int bit_val = 0);
     virtual int set_address(int adrs) override;
     void set_cv_bit(int cv_num, int bit_num, int bit_val);
-
+    virtual PktType get_type() const override
+    {
+        return OpsWriteBit;
+    }
 private:
     void refresh(int adrs, int cv_num, int bit_num, int bit_val);
     int get_cv_num() const;
