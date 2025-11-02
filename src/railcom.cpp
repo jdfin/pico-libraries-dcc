@@ -7,28 +7,26 @@
 #include <cstdio>
 #include <cstring>
 
+#include "dbg_gpio.h"
 #include "xassert.h"
 
-#include "dbg_gpio.h"
-
-static const int dbg_gpio = 21;
-
-RailCom::RailCom(uart_inst_t* uart, int rx_gpio) :
+RailCom::RailCom(uart_inst_t* uart, int rx_gpio, int dbg_gpio) :
     _uart(uart),
-    _rx_gpio(rx_gpio)
+    _rx_gpio(rx_gpio),
+    _dbg_gpio(dbg_gpio),
+    _pkt_len(0),
+    _ch1_msg_cnt(0),
+    _ch2_msg_cnt(0),
+    _parsed_all(false)
 {
     if (_uart == nullptr || _rx_gpio < 0)
         return;
 
-    if (dbg_gpio >= 0)
-        DbgGpio::init(dbg_gpio);
+    if (_dbg_gpio >= 0)
+        DbgGpio::init(_dbg_gpio);
 
     gpio_set_function(_rx_gpio, UART_FUNCSEL_NUM(_uart, _rx_gpio));
     uart_init(_uart, RailComSpec::baud);
-
-    _pkt_len = 0;
-    _ch1_msg_cnt = 0;
-    _ch2_msg_cnt = 0;
 }
 
 void RailCom::read()
@@ -36,26 +34,23 @@ void RailCom::read()
     _pkt_len = 0;
     _ch1_msg_cnt = 0;
     _ch2_msg_cnt = 0;
+    _parsed_all = false;
 
     for (_pkt_len = 0; _pkt_len < pkt_max && uart_is_readable(_uart); _pkt_len++) {
         _enc[_pkt_len] = uart_getc(_uart);
         _dec[_pkt_len] = RailComSpec::decode[_enc[_pkt_len]];
-        if (_dec[_pkt_len] == RailComSpec::DecId::dec_inv) {
-#if 0
-            if (dbg_gpio >= 0) {
-                DbgGpio d(dbg_gpio); // scope trigger
-                // this seems to be needed to force construction of DbgGpio
-                [[maybe_unused]] volatile int i = 0;
-            }
-#endif
+        // trigger on invalid data received
+        if (_dbg_gpio >= 0 && _dec[_pkt_len] == RailComSpec::DecId::dec_inv) {
+            DbgGpio d(_dbg_gpio); // scope trigger
+            // XXX this seems to be needed to force construction of DbgGpio
+            [[maybe_unused]] volatile int i = 0;
         }
     }
-#if 0
-    if (_pkt_len != pkt_max) {
-        DbgGpio d(dbg_gpio);
+    // trigger on not receiving all bytes
+    if (_dbg_gpio >= 0 && _pkt_len != pkt_max) {
+        DbgGpio d(_dbg_gpio);
         [[maybe_unused]] volatile int i = 0;
     }
-#endif
 }
 
 // Split received packet into channel 1 and channel 2
@@ -90,11 +85,10 @@ void RailCom::read()
 //
 // XXX Can we get less than 6 bytes of channel 2 data? ESU LokSound 5 fills
 //     out channel 2 to 6 bytes, but I don't think the spec requires that.
-//
 void RailCom::parse()
 {
-    const uint8_t *d = _dec;
-    const uint8_t *d_end = d + _pkt_len;
+    const uint8_t* d = _dec;
+    const uint8_t* d_end = d + _pkt_len;
 
     // Attempt to extract channel 1.
     //
@@ -119,7 +113,6 @@ void RailCom::parse()
     // we don't use any of it. (An alternative would be to use what we can
     // understand.)
 
-
     _ch2_msg_cnt = 0;
     if ((d_end - d) == RailComSpec::ch2_bytes) {
         while (d < d_end) {
@@ -132,17 +125,14 @@ void RailCom::parse()
             }
         }
     }
+
+    _parsed_all = (d == d_end);
 }
 
-// for each byte:
-//   if a byte is not 4/8 valid
-//     show raw !hh!
-//   else
-//     decode to 6 bits
-//     if >= 0x40
-//       show raw [hh]
-//     else
-//       show decoded bbbbbb
+// for each encoded byte:
+//   if byte decodes to 6-bit binary, print bits (bbbbbb)
+//   else if byte is special (ack, nak, bsy), print text (AK, NK, BZ)
+//   else print raw encoded hex (xx)
 char* RailCom::dump(char* buf, int buf_len) const
 {
     memset(buf, '\0', buf_len);
@@ -189,20 +179,31 @@ char* RailCom::show(char* buf, int buf_len) const
     // it is expected that parse() has been called before this
     // XXX Enforce!
 
-    // show channel 1
-    if (_ch1_msg_cnt > 0) {
-        b += _ch1_msg.show(b, e - b);
-        b += snprintf(b, e - b, " ");
-    }
+    if (_pkt_len == 0) {
+        b += snprintf(b, e - b, "[no data]");
+    } else if (_ch1_msg_cnt == 0 && _ch2_msg_cnt == 0) {
+        b += snprintf(b, e - b, "[corrupt]");
+    } else {
 
-    // show channel 2
-    for (int i = 0; i < _ch2_msg_cnt; i++) {
-        if (i > 0 && _ch2_msg[i] == _ch2_msg[i-1])
-            b += snprintf(b, e - b, "#"); // same as previous message
-        else
-            b += _ch2_msg[i].show(b, e - b); // different from previous message
-        if (i < (_ch2_msg_cnt - 1))
+        // show channel 1
+        if (_ch1_msg_cnt > 0) {
+            b += _ch1_msg.show(b, e - b);
             b += snprintf(b, e - b, " ");
+        }
+
+        // show channel 2
+        for (int i = 0; i < _ch2_msg_cnt; i++) {
+            if (i > 0 && _ch2_msg[i] == _ch2_msg[i - 1])
+                b += snprintf(b, e - b, "#"); // same as previous message
+            else
+                b += _ch2_msg[i].show(b, e - b); // different from previous message
+            if (i < (_ch2_msg_cnt - 1))
+                b += snprintf(b, e - b, " ");
+        }
+
+        if (!_parsed_all)
+            b += snprintf(b, e - b, " [junk]");
+
     }
 
     return buf;

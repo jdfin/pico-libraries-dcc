@@ -10,7 +10,7 @@
 class RailCom
 {
 public:
-    RailCom(uart_inst_t* uart, int rx_gpio);
+    RailCom(uart_inst_t* uart, int rx_gpio, int dbg_gpio = -1);
 
     void reset()
     {
@@ -24,15 +24,17 @@ public:
 
     void parse();
 
-    char *dump(char *buf, int buf_len) const; // raw
+    char* dump(char* buf, int buf_len) const; // raw
 
-    char *show(char *buf, int buf_len) const; // pretty
+    char* show(char* buf, int buf_len) const; // pretty
 
 private:
 
     uart_inst_t* _uart;
 
     int _rx_gpio;
+
+    int _dbg_gpio;
 
     ///// Raw RailCom Data (4/8 encoded, and decoded bytes)
 
@@ -52,5 +54,7 @@ private:
     static constexpr int ch2_msg_max = RailComSpec::ch2_bytes;
     RailComMsg _ch2_msg[ch2_msg_max];
     int _ch2_msg_cnt;
+
+    bool _parsed_all;
 
 }; // class RailCom

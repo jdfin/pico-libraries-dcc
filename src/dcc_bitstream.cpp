@@ -132,8 +132,8 @@ void DccBitstream::start(int preamble_bits, DccPkt& first)
 
     // first packet starts with preamble (no cutout)
     _byte = -1;
-    _bit = _preamble_bits - 1;  // will send a preamble bit for
-    // _bit = _preamble_bits-1...0
+    // will send a preamble bit for _bit = _preamble_bits-1...0
+    _bit = _preamble_bits - 1;
 
     next_bit();
 
@@ -185,7 +185,6 @@ void DccBitstream::next_bit()
     // then byte=0,1,...msg_len-1 for the message bytes
     if (_byte == -2) {
         // doing railcom cutout
-        // _railcom should always be true here
         if (_bit == 4) {
             // first bit, power is on for a quarter bit time
             prog_bit(1, 1);
