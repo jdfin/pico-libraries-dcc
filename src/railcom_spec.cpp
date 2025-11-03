@@ -1,9 +1,10 @@
-#include <cstdint>
-#include "xassert.h"
 #include "railcom_spec.h"
 
-namespace RailComSpec
-{
+#include <cstdint>
+
+#include "xassert.h"
+
+namespace RailComSpec {
 
 #if (RAILCOMSPEC_VERSION != 2012) && (RAILCOMSPEC_VERSION != 2021)
 #error RAILCOMSPEC_VERSION UNKNOWN
@@ -21,9 +22,9 @@ const uint8_t decode[UINT8_MAX + 1] = {
     _INV, _INV, _INV, _INV, _INV, _INV, _INV, _INV, // 0x00-0x07
     _INV, _INV, _INV, _INV, _INV, _INV, _INV,       // 0x08-0x0e
 #if RAILCOMSPEC_VERSION == 2012
-    _NAK,                                           // 0x0f
+    _NAK, // 0x0f
 #elif RAILCOMSPEC_VERSION == 2021
-    _ACK,                                           // 0x0f (there are two ACKs)
+    _ACK, // 0x0f (there are two ACKs)
 #endif
     _INV, _INV, _INV, _INV, _INV, _INV, _INV, 0x33, // 0x10-0x17
     _INV, _INV, _INV, 0x34, _INV, 0x35, 0x36, _INV, // 0x18-0x1f
@@ -32,9 +33,9 @@ const uint8_t decode[UINT8_MAX + 1] = {
     _INV, _INV, _INV, 0x3f, _INV, 0x3d, 0x38, _INV, // 0x30-0x37
     _INV, 0x3e, 0x39, _INV,                         // 0x38-0x3b
 #if RAILCOMSPEC_VERSION == 2012
-    _RES,                                           // 0x3c
+    _RES, // 0x3c
 #elif RAILCOMSPEC_VERSION == 2021
-    _NAK,                                           // 0x3c (optional)
+    _NAK, // 0x3c (optional)
 #endif
     _INV, _INV, _INV,                               // 0x3d-0x3f
     _INV, _INV, _INV, _INV, _INV, _INV, _INV, 0x24, // 0x40-0x47
@@ -59,9 +60,9 @@ const uint8_t decode[UINT8_MAX + 1] = {
     0x2c, _INV, _INV, _INV, _INV, _INV, _INV, _INV, // 0xd8-0xdf
     _INV,                                           // 0xe0
 #if RAILCOMSPEC_VERSION == 2012
-    _BSY,                                           // 0xe1
+    _BSY, // 0xe1
 #elif RAILCOMSPEC_VERSION == 2021
-    _RES,                                           // 0xe1
+    _RES, // 0xe1
 #endif
     0x28, _INV, 0x27, _INV, _INV, _INV,             // 0xe2-0xe7
     0x26, _INV, _INV, _INV, _INV, _INV, _INV, _INV, // 0xe8-0xef
@@ -73,14 +74,14 @@ const char *dyn_name(DynId id)
 {
     static constexpr int name_max = 8;
     static const char names[DynId::dyn_max][name_max] = {
-        "SPD",    "SPD2",   "ID2",    "ID3",    "ID4",    "ID5",    "INPUT",  "STATS",  // 0..7
-        "CONT1",  "CONT2",  "CONT3",  "CONT4",  "CONT5",  "CONT6",  "CONT7",  "CONT8",  // 8..15
-        "CONT9",  "CONT10", "CONT11", "CONT12", "ADRS",   "STATUS", "ODOM",   "ID23",   // 16..23
-        "ID24",   "ID25",   "ID26",   "ID27",   "ID28",   "ID29",   "ID30",   "ID31",   // 24..31
-        "ID32",   "ID33",   "ID34",   "ID35",   "ID36",   "ID37",   "ID38",   "ID39",   // 32..39
-        "ID40",   "ID41",   "ID42",   "ID43",   "ID44",   "ID45",   "ID46",   "ID47",   // 40..47
-        "ID48",   "ID49",   "ID50",   "ID51",   "ID52",   "ID53",   "ID54",   "ID55",   // 48..55
-        "ID56",   "ID57",   "ID58",   "ID59",   "ID60",   "ID61",   "ID62",   "ID63",   // 56..63
+        "SPD",   "SPD2",   "ID2",    "ID3",    "ID4",   "ID5",    "INPUT", "STATS", // 0..7
+        "CONT1", "CONT2",  "CONT3",  "CONT4",  "CONT5", "CONT6",  "CONT7", "CONT8", // 8..15
+        "CONT9", "CONT10", "CONT11", "CONT12", "ADRS",  "STATUS", "ODOM",  "ID23",  // 16..23
+        "ID24",  "ID25",   "ID26",   "ID27",   "ID28",  "ID29",   "ID30",  "ID31",  // 24..31
+        "ID32",  "ID33",   "ID34",   "ID35",   "ID36",  "ID37",   "ID38",  "ID39",  // 32..39
+        "ID40",  "ID41",   "ID42",   "ID43",   "ID44",  "ID45",   "ID46",  "ID47",  // 40..47
+        "ID48",  "ID49",   "ID50",   "ID51",   "ID52",  "ID53",   "ID54",  "ID55",  // 48..55
+        "ID56",  "ID57",   "ID58",   "ID59",   "ID60",  "ID61",   "ID62",  "ID63",  // 56..63
     };
     xassert(id < DynId::dyn_max);
     return names[id];

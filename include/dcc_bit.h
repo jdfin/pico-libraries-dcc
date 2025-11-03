@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+
 #include "dcc_spec.h"
 
 
@@ -19,7 +20,7 @@ class DccBit
 
 public:
 
-    DccBit(int verbosity=0);
+    DccBit(int verbosity = 0);
 
     ~DccBit();
 
@@ -31,20 +32,21 @@ public:
     // convert an interval into a half-bit
     static int to_half(int d_us)
     {
-        if (d_us >= DccSpec::tr0_min_us && d_us <= DccSpec::tr0_max_us)
+        if (d_us >= DccSpec::tr0_min_us && d_us <= DccSpec::tr0_max_us) {
             return 0;
-        else if (d_us >= DccSpec::tr1_min_us && d_us <= DccSpec::tr1_max_us)
+        } else if (d_us >= DccSpec::tr1_min_us && d_us <= DccSpec::tr1_max_us) {
             return 1;
-        else
+        } else {
             return 2;
+        }
     }
 
     // process a valid half-bit
     void half_bit(int half);
 
     // packet-receive function type
-    typedef void pkt_recv_t(const uint8_t *pkt, int pkt_len, int preamble_len,
-                            uint64_t start_us, int bad_cnt);
+    typedef void pkt_recv_t(const uint8_t *pkt, int pkt_len, int preamble_len, uint64_t start_us,
+                            int bad_cnt);
 
     // install function to be called on complete packet received
     void on_pkt_recv(pkt_recv_t *pkt_recv);
@@ -63,7 +65,7 @@ private:
     //
     // UNSYNC - Waiting for preamble.
     // When a valid half-one is seen, go to PREAMBLE.
-    // 
+    //
     // PREAMBLE - Counting ones in preamble.
     // Count half-ones forever. When a half-zero is seen, reset for a packet
     // and go to BIT_H if there have been enough half-ones (preamble long
@@ -81,10 +83,10 @@ private:
     // to wait for the second half of the bit.
 
     enum BitState {
-        UNSYNC,     // waiting for a half-one to start the preamble
-        PREAMBLE,   // waiting for a half-zero, counting half-ones in preamble
-        BIT_H,      // saw first half of _bit (0 or 1)
-        BIT,        // got a complete bit, waiting for next bit
+        UNSYNC,   // waiting for a half-one to start the preamble
+        PREAMBLE, // waiting for a half-zero, counting half-ones in preamble
+        BIT_H,    // saw first half of _bit (0 or 1)
+        BIT,      // got a complete bit, waiting for next bit
     } _bit_state;
 
     int _preamble; // count of half-ones in preamble
@@ -92,7 +94,7 @@ private:
     // 10 complete one-bits required = 20 half-bits
     static const int preamble_min = 20;
 
-    int _bit;  // bit we're in the middle of (0 or 1)
+    int _bit; // bit we're in the middle of (0 or 1)
 
     uint64_t _edge_us; // time of last edge
 

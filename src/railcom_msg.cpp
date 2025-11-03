@@ -11,12 +11,14 @@
 // Return true if message extracted, false on error
 // Update d to point to next unused data
 
+
 // channel 1 messages
 bool RailComMsg::parse1(const uint8_t *&d, const uint8_t *d_end)
 {
     int len = d_end - d; // 6-bit datum available
-    if (len < 1)
+    if (len < 1) {
         return false;
+    }
 
     uint8_t b0 = d[0];
     if (b0 < RailComSpec::DecId::dec_max) {
@@ -43,12 +45,14 @@ bool RailComMsg::parse1(const uint8_t *&d, const uint8_t *d_end)
     return false;
 }
 
+
 // channel 2 messages
 bool RailComMsg::parse2(const uint8_t *&d, const uint8_t *d_end)
 {
     int len = d_end - d; // 6-bit datum available
-    if (len < 1)
+    if (len < 1) {
         return false;
+    }
 
     uint8_t b0 = d[0];
     if (b0 == RailComSpec::DecId::dec_ack) {
@@ -76,7 +80,7 @@ bool RailComMsg::parse2(const uint8_t *&d, const uint8_t *d_end)
                 d += 2;
                 return true;
             }
-        // it looks like ahi and alo are allowed in either channel
+            // it looks like ahi and alo are allowed in either channel
         } else if (pkt_id == RailComSpec::PktId::pkt_ahi) {
             // 12 bit (2 byte) message
             if (len >= 2) {
@@ -132,6 +136,7 @@ bool RailComMsg::parse2(const uint8_t *&d, const uint8_t *d_end)
     return false;
 }
 
+
 // Pretty-print to buf
 // Return number of characters written to buf
 // Example output:
@@ -139,12 +144,12 @@ bool RailComMsg::parse2(const uint8_t *&d, const uint8_t *d_end)
 //   "[POM 1e]"
 //   "[ALO 03]"
 //   "[DYN SPD=0]"
-int RailComMsg::show(char* buf, int buf_len) const
+int RailComMsg::show(char *buf, int buf_len) const
 {
     memset(buf, '\0', buf_len);
 
-    char* b = buf;
-    char* e = buf + buf_len;
+    char *b = buf;
+    char *e = buf + buf_len;
 
     b += snprintf(b, e - b, "[");
 
@@ -163,7 +168,8 @@ int RailComMsg::show(char* buf, int buf_len) const
     } else if (id == MsgId::dyn) {
         b += snprintf(b, e - b, " %s=%d", RailComSpec::dyn_name(dyn.id), dyn.val);
     } else if (id == MsgId::xpom) {
-        b += snprintf(b, e - b, " %d %02x %02x %02x %02x", xpom.ss, xpom.val[0], xpom.val[1], xpom.val[2], xpom.val[3]);
+        b += snprintf(b, e - b, " %d %02x %02x %02x %02x", xpom.ss, xpom.val[0], xpom.val[1],
+                      xpom.val[2], xpom.val[3]);
     } else {
         b += snprintf(b, e - b, " ?");
     }
@@ -173,14 +179,54 @@ int RailComMsg::show(char* buf, int buf_len) const
     return b - buf;
 }
 
+
 const char *RailComMsg::id_name() const
 {
     static constexpr int id_max = int(MsgId::inv) + 1;
     static constexpr int name_max = 4;
-    static char names[id_max][name_max] = {
-    //  ack  nak  bsy  pom  ahi  alo  ext  dyn xpom  inv
-        "A", "N", "B", "P", "H", "L", "E", "D", "X", "I"
-    };
+    static char names[id_max][name_max] = {//  ack  nak  bsy  pom  ahi  alo  ext  dyn xpom  inv
+                                           "A", "N", "B", "P", "H", "L", "E", "D", "X", "I"};
     xassert(int(id) < id_max);
     return names[int(id)];
 }
+
+
+bool RailComMsg::operator==(const RailComMsg &rhs) const
+{
+    if (id != rhs.id) {
+        return false;
+    }
+
+    switch (id) {
+
+        case MsgId::ack:
+        case MsgId::nak:
+        case MsgId::bsy:
+            return true;
+
+        case MsgId::pom:
+            return pom.val == rhs.pom.val;
+
+        case MsgId::ahi:
+            return ahi.ahi == rhs.ahi.ahi;
+
+        case MsgId::alo:
+            return alo.alo == rhs.alo.alo;
+
+        case MsgId::ext:
+            return ext.typ == rhs.ext.typ && ext.pos == rhs.ext.pos;
+
+        case MsgId::dyn:
+            return dyn.id == rhs.dyn.id && dyn.val == rhs.dyn.val;
+
+        case MsgId::xpom:
+            return xpom.ss == rhs.xpom.ss && xpom.val[0] == rhs.xpom.val[0] &&
+                   xpom.val[1] == rhs.xpom.val[1] && xpom.val[2] == rhs.xpom.val[2] &&
+                   xpom.val[3] == rhs.xpom.val[3];
+
+        default:
+            return false;
+
+    } // switch (id)
+
+} // RailComMsg::operator==

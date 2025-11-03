@@ -3,8 +3,8 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include "pico/types.h" // uint
 
+#include "pico/types.h" // uint
 #include "xassert.h"
 
 #define PRINT_BRIEF 1
@@ -15,9 +15,13 @@ DccPkt::DccPkt(const uint8_t *msg, int msg_len)
 
     memset(_msg, 0, msg_max);
 
-    if (msg_len > msg_max) msg_len = 0;
+    if (msg_len > msg_max) {
+        msg_len = 0;
+    }
 
-    if (msg != nullptr) memcpy(_msg, msg, msg_len);
+    if (msg != nullptr) {
+        memcpy(_msg, msg, msg_len);
+    }
 
     _msg_len = msg_len;
 }
@@ -39,7 +43,9 @@ uint8_t DccPkt::data(int idx) const
 int DccPkt::get_address() const
 {
     // absolute minimum is one byte of address and xor byte
-    if (_msg_len < 2) return address_inv;
+    if (_msg_len < 2) {
+        return address_inv;
+    }
 
     const uint8_t b0 = _msg[0];
 
@@ -50,16 +56,19 @@ int DccPkt::get_address() const
     } else if (b0 < 192) {
         // 128-191: accessory decoder with 9- or 11-bit address
         // absolute minimum is now three bytes
-        if (_msg_len < 3) return address_inv;
+        if (_msg_len < 3) {
+            return address_inv;
+        }
         const uint8_t b1 = _msg[1];
-        int adrs = (int(b0 & 0x3f) << 2) | (int(~b1 & 0x70) << 4) |
-                   (int(b1 & 0x06) >> 1);
+        int adrs = (int(b0 & 0x3f) << 2) | (int(~b1 & 0x70) << 4) | (int(b1 & 0x06) >> 1);
         return adrs;
 
     } else if (b0 < 232) {
         // multi-function decoder with 14-bit address
         // absolute minimum is now three bytes
-        if (_msg_len < 3) return address_inv;
+        if (_msg_len < 3) {
+            return address_inv;
+        }
         return (int(b0 & 0x3f) << 8) | _msg[1];
 
     } else if (b0 < 253) {
@@ -75,7 +84,7 @@ int DccPkt::get_address() const
         return b0;
     }
 
-}  // DccPkt::get_address
+} // DccPkt::get_address
 
 // set address in packet
 // return address bytes used (1 or 2)
@@ -102,10 +111,11 @@ int DccPkt::set_address(int adrs)
 // return address bytes used (1 or 2)
 int DccPkt::get_address_size() const
 {
-    if (_msg[0] <= address_short_max)
+    if (_msg[0] <= address_short_max) {
         return 1;
-    else
+    } else {
         return 2;
+    }
 }
 
 void DccPkt::set_xor()
@@ -114,21 +124,27 @@ void DccPkt::set_xor()
     xassert(_msg_len < msg_max);
 
     uint8_t b = 0x00;
-    for (int i = 0; i < (_msg_len - 1); i++) b ^= _msg[i];
+    for (int i = 0; i < (_msg_len - 1); i++) {
+        b ^= _msg[i];
+    }
     _msg[_msg_len - 1] = b;
 }
 
 bool DccPkt::check_xor() const
 {
     uint8_t x = 0;
-    for (int i = 0; i < _msg_len; i++) x ^= _msg[i];
+    for (int i = 0; i < _msg_len; i++) {
+        x ^= _msg[i];
+    }
     return x == 0;
 }
 
 bool DccPkt::check_xor(const uint8_t *msg, int msg_len)
 {
     uint8_t x = 0;
-    for (int i = 0; i < msg_len; i++) x ^= msg[i];
+    for (int i = 0; i < msg_len; i++) {
+        x ^= msg[i];
+    }
     return x == 0;
 }
 
@@ -154,18 +170,24 @@ bool DccPkt::check_xor(const uint8_t *msg, int msg_len)
 
 bool DccPkt::is_svc_direct(const uint8_t *msg, int msg_len)
 {
-    if (msg_len != 4) return false;
+    if (msg_len != 4) {
+        return false;
+    }
 
     // 1st byte without the two address bits
     const uint8_t b0 = msg[0] & 0xfc;
 
     // for write and verify, 2nd and 3rd bytes can be anything
 
-    if (b0 == 0x74 || b0 == 0x7c) return true;  // write or verify
+    if (b0 == 0x74 || b0 == 0x7c) {
+        return true; // write or verify
+    }
 
     // for bit manip, check those 1 bits in 3rd byte
 
-    if (b0 == 0x78 && (msg[2] & 0xe0) == 0xe0) return true;  // bit manipulation
+    if (b0 == 0x78 && (msg[2] & 0xe0) == 0xe0) {
+        return true; // bit manipulation
+    }
 
     return false;
 }
@@ -173,96 +195,130 @@ bool DccPkt::is_svc_direct(const uint8_t *msg, int msg_len)
 bool DccPkt::decode_speed_128(int &speed) const
 {
     // address (1 or 2 bytes), instruction, speed, xor
-    if (_msg_len != 4 && _msg_len != 5) return false;
+    if (_msg_len != 4 && _msg_len != 5) {
+        return false;
+    }
     int idx = get_address_size();
-    if (_msg[idx] != 0x3f) return false;
+    if (_msg[idx] != 0x3f) {
+        return false;
+    }
     idx++;
     speed = DccPktSpeed128::dcc_to_int(_msg[idx]);
     return true;
 }
 
-bool DccPkt::decode_func_0(int *f) const  // f[5], f0..f4
+bool DccPkt::decode_func_0(int *f) const // f[5], f0..f4
 {
     // address (1 or 2 bytes), instruction, xor
-    if (_msg_len != 3 && _msg_len != 4) return false;
+    if (_msg_len != 3 && _msg_len != 4) {
+        return false;
+    }
     int idx = get_address_size();
     uint8_t instr = _msg[idx];
-    if ((instr & 0xe0) != 0x80) return false;
-    f[0] = (instr >> 4) & 1;  // f0
-    f[1] = (instr >> 0) & 1;  // f1
-    f[2] = (instr >> 1) & 1;  // f2
-    f[3] = (instr >> 2) & 1;  // f3
-    f[4] = (instr >> 3) & 1;  // f4
+    if ((instr & 0xe0) != 0x80) {
+        return false;
+    }
+    f[0] = (instr >> 4) & 1; // f0
+    f[1] = (instr >> 0) & 1; // f1
+    f[2] = (instr >> 1) & 1; // f2
+    f[3] = (instr >> 2) & 1; // f3
+    f[4] = (instr >> 3) & 1; // f4
     return true;
 }
 
-bool DccPkt::decode_func_5(int *f) const  // f[4], f5..f8
+bool DccPkt::decode_func_5(int *f) const // f[4], f5..f8
 {
     // address (1 or 2 bytes), instruction, xor
-    if (_msg_len != 3 && _msg_len != 4) return false;
+    if (_msg_len != 3 && _msg_len != 4) {
+        return false;
+    }
     int idx = get_address_size();
     uint8_t instr = _msg[idx];
-    if ((instr & 0xf0) != 0xb0) return false;
-    f[0] = (instr >> 0) & 1;  // f5
-    f[1] = (instr >> 1) & 1;  // f5
-    f[2] = (instr >> 2) & 1;  // f6
-    f[3] = (instr >> 3) & 1;  // f7
+    if ((instr & 0xf0) != 0xb0) {
+        return false;
+    }
+    f[0] = (instr >> 0) & 1; // f5
+    f[1] = (instr >> 1) & 1; // f5
+    f[2] = (instr >> 2) & 1; // f6
+    f[3] = (instr >> 3) & 1; // f7
     return true;
 }
 
-bool DccPkt::decode_func_9(int *f) const  // f[4], f9..f12
+bool DccPkt::decode_func_9(int *f) const // f[4], f9..f12
 {
     // address (1 or 2 bytes), instruction, xor
-    if (_msg_len != 3 && _msg_len != 4) return false;
+    if (_msg_len != 3 && _msg_len != 4) {
+        return false;
+    }
     int idx = get_address_size();
     uint8_t instr = _msg[idx];
-    if ((instr & 0xf0) != 0xa0) return false;
-    f[0] = (instr >> 0) & 1;  // f9
-    f[1] = (instr >> 1) & 1;  // f10
-    f[2] = (instr >> 2) & 1;  // f11
-    f[3] = (instr >> 3) & 1;  // f12
+    if ((instr & 0xf0) != 0xa0) {
+        return false;
+    }
+    f[0] = (instr >> 0) & 1; // f9
+    f[1] = (instr >> 1) & 1; // f10
+    f[2] = (instr >> 2) & 1; // f11
+    f[3] = (instr >> 3) & 1; // f12
     return true;
 }
 
-bool DccPkt::decode_func_13(int *f) const  // f[8], f13..f20
+bool DccPkt::decode_func_13(int *f) const // f[8], f13..f20
 {
     // address (1 or 2 bytes), instruction, f-bits, xor
-    if (_msg_len != 4 && _msg_len != 5) return false;
+    if (_msg_len != 4 && _msg_len != 5) {
+        return false;
+    }
     int idx = get_address_size();
     uint8_t instr = _msg[idx];
-    if (instr != DccPktFunc13::inst_byte) return false;
+    if (instr != DccPktFunc13::inst_byte) {
+        return false;
+    }
     idx++;
     uint8_t f_bits = _msg[idx];
-    for (int b = 0; b < 8; b++) f[b] = (f_bits >> b) & 1;  // f13..f20
+    for (int b = 0; b < 8; b++) {
+        f[b] = (f_bits >> b) & 1; // f13..f20
+    }
     return true;
 }
 
 #if INCLUDE_DCC_FUNC_21
-bool DccPkt::decode_func_21(int *f) const  // f[8], f21..f28
+bool DccPkt::decode_func_21(int *f) const // f[8], f21..f28
 {
     // address (1 or 2 bytes), instruction, f-bits, xor
-    if (_msg_len != 4 && _msg_len != 5) return false;
+    if (_msg_len != 4 && _msg_len != 5) {
+        return false;
+    }
     int idx = get_address_size();
     uint8_t instr = _msg[idx];
-    if (instr != DccPktFunc21::inst_byte) return false;
+    if (instr != DccPktFunc21::inst_byte) {
+        return false;
+    }
     idx++;
     uint8_t f_bits = _msg[idx];
-    for (int b = 0; b < 8; b++) f[b] = (f_bits >> b) & 1;  // f21..f28
+    for (int b = 0; b < 8; b++) {
+        f[b] = (f_bits >> b) & 1; // f21..f28
+    }
     return true;
 }
 #endif
 
 #if INCLUDE_DCC_FUNC_29
-bool DccPkt::decode_func_29(int *f) const  // int f[8] is f29..f36
+bool DccPkt::decode_func_29(int *f) const // int f[8] is f29..f36
 {
     // address (1 or 2 bytes), instruction, f-bits, xor
-    if (_msg_len != 4 && _msg_len != 5) return false;
+    if (_msg_len != 4 && _msg_len != 5) {
+        return false;
+    }
     int idx = get_address_size();
     uint8_t instr = _msg[idx];
-    if (instr != DccPktFunc29::inst_byte) return false;
+    if (instr != DccPktFunc29::inst_byte) {
+        return false;
+    }
     idx++;
     uint8_t f_bits = _msg[idx];
-    for (int b = 0; b < 8; b++) f[b] = (f_bits >> b) & 1;  // f29..f36
+    for (int b = 0; b < 8; b++) {
+        f[b] = (f_bits >> b) & 1; // f29..f36
+    }
     return true;
 }
 #endif
@@ -279,11 +335,15 @@ char *DccPkt::dump(char *buf, int buf_len) const
 
     b += snprintf(b, e - b, "{");
 
-    if (e < b) return buf;
+    if (e < b) {
+        return buf;
+    }
 
     for (int i = 0; i < _msg_len; i++) {
         b += snprintf(b, e - b, " %02x", _msg[i]);
-        if (e < b) return buf;
+        if (e < b) {
+            return buf;
+        }
     }
 
     b += snprintf(b, e - b, " }");
@@ -305,7 +365,9 @@ char *DccPkt::show(char *buf, int buf_len) const
 
     int idx = 0;
 
-    if (!check_len_min(b, e, 2)) return buf;
+    if (!check_len_min(b, e, 2)) {
+        return buf;
+    }
 
     uint8_t b0 = _msg[idx++];
     xassert(idx == 1);
@@ -325,7 +387,9 @@ char *DccPkt::show(char *buf, int buf_len) const
             return buf;
         } else if (b0 >= 128) {
             // long address
-            if (!check_len_min(b, e, idx + 2)) return buf;
+            if (!check_len_min(b, e, idx + 2)) {
+                return buf;
+            }
             uint8_t b1 = _msg[idx++];
             adrs = ((adrs & 0x3f) << 8) | b1;
         } else {
@@ -341,180 +405,207 @@ char *DccPkt::show(char *buf, int buf_len) const
         b += snprintf(b, e - b, "%5d: ", adrs);
 #endif
 
-        if (!check_len_min(b, e, idx + 2)) return buf;
+        if (!check_len_min(b, e, idx + 2)) {
+            return buf;
+        }
 
         uint8_t instr = _msg[idx++];
 
         if (instr == 0x00) {
             b += snprintf(b, e - b, "reset");
 
-            if (!check_len_is(b, e, idx + 1)) return buf;
+            if (!check_len_is(b, e, idx + 1)) {
+                return buf;
+            }
 
         } else if (instr == 0x3f) {
-            if (!check_len_min(b, e, idx + 2)) return buf;
+            if (!check_len_min(b, e, idx + 2)) {
+                return buf;
+            }
 
             int speed = _msg[idx++];
 
-            if (speed & 0x80)
+            if (speed & 0x80) {
                 b += snprintf(b, e - b, "+%d/128", speed & 0x7f);
-            else
+            } else {
                 b += snprintf(b, e - b, "-%d/128", speed & 0x7f);
+            }
 
-            if (!check_len_is(b, e, idx + 1)) return buf;
+            if (!check_len_is(b, e, idx + 1)) {
+                return buf;
+            }
 
         } else if ((instr & 0xe0) == 0x80) {
 #if PRINT_BRIEF
             uint bits = ((instr & 0x0f) << 1) | ((instr & 0x10) >> 4);
             b += snprintf(b, e - b, "f0=%02x", bits);
 #else
-            b += snprintf(b, e - b, "f0%c f1%c f2%c f3%c f4%c",
-                          instr & 0x10 ? '+' : '-', instr & 0x01 ? '+' : '-',
-                          instr & 0x02 ? '+' : '-', instr & 0x04 ? '+' : '-',
-                          instr & 0x08 ? '+' : '-');
+            b += snprintf(b, e - b, "f0%c f1%c f2%c f3%c f4%c", instr & 0x10 ? '+' : '-',
+                          instr & 0x01 ? '+' : '-', instr & 0x02 ? '+' : '-',
+                          instr & 0x04 ? '+' : '-', instr & 0x08 ? '+' : '-');
 #endif
-            if (!check_len_is(b, e, idx + 1)) return buf;
+            if (!check_len_is(b, e, idx + 1)) {
+                return buf;
+            }
 
         } else if ((instr & 0xf0) == 0xb0) {
 #if PRINT_BRIEF
             b += snprintf(b, e - b, "f5=%02x", instr & 0x0f);
 #else
-            b += snprintf(b, e - b, "f5%c f6%c f7%c f8%c",
-                          instr & 0x01 ? '+' : '-', instr & 0x02 ? '+' : '-',
-                          instr & 0x04 ? '+' : '-', instr & 0x08 ? '+' : '-');
+            b += snprintf(b, e - b, "f5%c f6%c f7%c f8%c", instr & 0x01 ? '+' : '-',
+                          instr & 0x02 ? '+' : '-', instr & 0x04 ? '+' : '-',
+                          instr & 0x08 ? '+' : '-');
 #endif
-            if (!check_len_is(b, e, idx + 1)) return buf;
+            if (!check_len_is(b, e, idx + 1)) {
+                return buf;
+            }
 
         } else if ((instr & 0xf0) == 0xa0) {
 #if PRINT_BRIEF
             b += snprintf(b, e - b, "f9=%02x", instr & 0x0f);
 #else
-            b += snprintf(b, e - b, "f9%c f10%c f11%c f12%c",
-                          instr & 0x01 ? '+' : '-', instr & 0x02 ? '+' : '-',
-                          instr & 0x04 ? '+' : '-', instr & 0x08 ? '+' : '-');
+            b += snprintf(b, e - b, "f9%c f10%c f11%c f12%c", instr & 0x01 ? '+' : '-',
+                          instr & 0x02 ? '+' : '-', instr & 0x04 ? '+' : '-',
+                          instr & 0x08 ? '+' : '-');
 #endif
-            if (!check_len_is(b, e, idx + 1)) return buf;
+            if (!check_len_is(b, e, idx + 1)) {
+                return buf;
+            }
 
         } else if ((instr & 0xf0) == 0xe0) {
             // ops mode cv access
             show_cv_access(b, e, instr, idx);
 
         } else if (instr == DccPktFunc13::inst_byte) {
-            if (!check_len_min(b, e, idx + 2)) return buf;
+            if (!check_len_min(b, e, idx + 2)) {
+                return buf;
+            }
 #if PRINT_BRIEF
             b += snprintf(b, e - b, "f13=%02x", uint(_msg[idx++]));
 #else
             uint8_t f = _msg[idx++];
-            b += snprintf(b, e - b,
-                          "f13%c f14%c f15%c f16%c f17%c f18%c f19%c f20%c",
-                          f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-',
-                          f & 0x04 ? '+' : '-', f & 0x08 ? '+' : '-',
-                          f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
+            b += snprintf(b, e - b, "f13%c f14%c f15%c f16%c f17%c f18%c f19%c f20%c",
+                          f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-', f & 0x04 ? '+' : '-',
+                          f & 0x08 ? '+' : '-', f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
                           f & 0x40 ? '+' : '-', f & 0x80 ? '+' : '-');
 #endif
-            if (!check_len_is(b, e, idx + 1)) return buf;
+            if (!check_len_is(b, e, idx + 1)) {
+                return buf;
+            }
 
 #if INCLUDE_DCC_FUNC_21
         } else if (instr == DccPktFunc21::inst_byte) {
-            if (!check_len_min(b, e, idx + 2)) return buf;
+            if (!check_len_min(b, e, idx + 2)) {
+                return buf;
+            }
 #if PRINT_BRIEF
             b += snprintf(b, e - b, "f21=%02x", uint(_msg[idx++]));
 #else
             uint8_t f = _msg[idx++];
-            b += snprintf(b, e - b,
-                          "f21%c f22%c f23%c f24%c f25%c f26%c f27%c f28%c",
-                          f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-',
-                          f & 0x04 ? '+' : '-', f & 0x08 ? '+' : '-',
-                          f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
+            b += snprintf(b, e - b, "f21%c f22%c f23%c f24%c f25%c f26%c f27%c f28%c",
+                          f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-', f & 0x04 ? '+' : '-',
+                          f & 0x08 ? '+' : '-', f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
                           f & 0x40 ? '+' : '-', f & 0x80 ? '+' : '-');
 #endif
-            if (!check_len_is(b, e, idx + 1)) return buf;
+            if (!check_len_is(b, e, idx + 1)) {
+                return buf;
+            }
 #endif // INCLUDE_DCC_FUNC_21
 
 #if INCLUDE_DCC_FUNC_29
         } else if (instr == DccPktFunc29::inst_byte) {
-            if (!check_len_min(b, e, idx + 2)) return buf;
+            if (!check_len_min(b, e, idx + 2)) {
+                return buf;
+            }
 #if PRINT_BRIEF
             b += snprintf(b, e - b, "f29=%02x", uint(_msg[idx++]));
 #else
             uint8_t f = _msg[idx++];
-            b += snprintf(b, e - b,
-                          "f29%c f30%c f31%c f32%c f33%c f34%c f35%c f36%c",
-                          f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-',
-                          f & 0x04 ? '+' : '-', f & 0x08 ? '+' : '-',
-                          f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
+            b += snprintf(b, e - b, "f29%c f30%c f31%c f32%c f33%c f34%c f35%c f36%c",
+                          f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-', f & 0x04 ? '+' : '-',
+                          f & 0x08 ? '+' : '-', f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
                           f & 0x40 ? '+' : '-', f & 0x80 ? '+' : '-');
 #endif
-            if (!check_len_is(b, e, idx + 1)) return buf;
+            if (!check_len_is(b, e, idx + 1)) {
+                return buf;
+            }
 #endif // INCLUDE_DCC_FUNC_29
 
 #if INCLUDE_DCC_FUNC_37
         } else if (instr == DccPktFunc37::inst_byte) {
-            if (!check_len_min(b, e, idx + 2)) return buf;
+            if (!check_len_min(b, e, idx + 2)) {
+                return buf;
+            }
 #if PRINT_BRIEF
             b += snprintf(b, e - b, "f37=%02x", uint(_msg[idx++]));
 #else
             uint8_t f = _msg[idx++];
-            b += snprintf(b, e - b,
-                          "f37%c f38%c f39%c f40%c f41%c f42%c f43%c f44%c",
-                          f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-',
-                          f & 0x04 ? '+' : '-', f & 0x08 ? '+' : '-',
-                          f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
+            b += snprintf(b, e - b, "f37%c f38%c f39%c f40%c f41%c f42%c f43%c f44%c",
+                          f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-', f & 0x04 ? '+' : '-',
+                          f & 0x08 ? '+' : '-', f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
                           f & 0x40 ? '+' : '-', f & 0x80 ? '+' : '-');
 #endif
-            if (!check_len_is(b, e, idx + 1)) return buf;
+            if (!check_len_is(b, e, idx + 1)) {
+                return buf;
+            }
 #endif // INCLUDE_DCC_FUNC_37
 
 #if INCLUDE_DCC_FUNC_45
         } else if (instr == DccPktFunc45::inst_byte) {
-            if (!check_len_min(b, e, idx + 2)) return buf;
+            if (!check_len_min(b, e, idx + 2)) {
+                return buf;
+            }
 #if PRINT_BRIEF
             b += snprintf(b, e - b, "f45=%02x", uint(_msg[idx++]));
 #else
             uint8_t f = _msg[idx++];
-            b += snprintf(b, e - b,
-                          "f45%c f46%c f47%c f48%c f49%c f50%c f51%c f52%c",
-                          f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-',
-                          f & 0x04 ? '+' : '-', f & 0x08 ? '+' : '-',
-                          f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
+            b += snprintf(b, e - b, "f45%c f46%c f47%c f48%c f49%c f50%c f51%c f52%c",
+                          f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-', f & 0x04 ? '+' : '-',
+                          f & 0x08 ? '+' : '-', f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
                           f & 0x40 ? '+' : '-', f & 0x80 ? '+' : '-');
 #endif
-            if (!check_len_is(b, e, idx + 1)) return buf;
+            if (!check_len_is(b, e, idx + 1)) {
+                return buf;
+            }
 #endif // INCLUDE_DCC_FUNC_45
 
 #if INCLUDE_DCC_FUNC_53
         } else if (instr == DccPktFunc53::inst_byte) {
-            if (!check_len_min(b, e, idx + 2)) return buf;
+            if (!check_len_min(b, e, idx + 2)) {
+                return buf;
+            }
 #if PRINT_BRIEF
             b += snprintf(b, e - b, "f53=%02x", uint(_msg[idx++]));
 #else
             uint8_t f = _msg[idx++];
-            b += snprintf(b, e - b,
-                          "f53%c f54%c f55%c f56%c f57%c f58%c f59%c f60%c",
-                          f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-',
-                          f & 0x04 ? '+' : '-', f & 0x08 ? '+' : '-',
-                          f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
+            b += snprintf(b, e - b, "f53%c f54%c f55%c f56%c f57%c f58%c f59%c f60%c",
+                          f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-', f & 0x04 ? '+' : '-',
+                          f & 0x08 ? '+' : '-', f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
                           f & 0x40 ? '+' : '-', f & 0x80 ? '+' : '-');
 #endif
-            if (!check_len_is(b, e, idx + 1)) return buf;
+            if (!check_len_is(b, e, idx + 1)) {
+                return buf;
+            }
 #endif // INCLUDE_DCC_FUNC_53
 
 #if INCLUDE_DCC_FUNC_61
         } else if (instr == DccPktFunc61::inst_byte) {
-            if (!check_len_min(b, e, idx + 2)) return buf;
+            if (!check_len_min(b, e, idx + 2)) {
+                return buf;
+            }
 #if PRINT_BRIEF
             b += snprintf(b, e - b, "f61=%02x", uint(_msg[idx++]));
 #else
             uint8_t f = _msg[idx++];
-            b += snprintf(b, e - b,
-                          "f61%c f62%c f63%c f64%c f65%c f66%c f67%c f68%c",
-                          f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-',
-                          f & 0x04 ? '+' : '-', f & 0x08 ? '+' : '-',
-                          f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
+            b += snprintf(b, e - b, "f61%c f62%c f63%c f64%c f65%c f66%c f67%c f68%c",
+                          f & 0x01 ? '+' : '-', f & 0x02 ? '+' : '-', f & 0x04 ? '+' : '-',
+                          f & 0x08 ? '+' : '-', f & 0x10 ? '+' : '-', f & 0x20 ? '+' : '-',
                           f & 0x40 ? '+' : '-', f & 0x80 ? '+' : '-');
 #endif
-            if (!check_len_is(b, e, idx + 1)) return buf;
+            if (!check_len_is(b, e, idx + 1)) {
+                return buf;
+            }
 #endif // INCLUDE_DCC_FUNC_61
-
         }
 
     } else if (128 <= b0 && b0 < 192) {
@@ -555,11 +646,12 @@ char *DccPkt::show(char *buf, int buf_len) const
         // [preamble] 0 10AAAAAA 0 0AAA1AAT 0 EEEEEEEE 1
         // Packet length = 3
 
-        if (!check_len_min(b, e, 3)) return buf;
+        if (!check_len_min(b, e, 3)) {
+            return buf;
+        }
 
         uint8_t b1 = _msg[1];
-        int adrs = (int(b0 & 0x3f) << 2) | (int(~b1 & 0x70) << 4) |
-                   (int(b1 & 0x06) >> 1);
+        int adrs = (int(b0 & 0x3f) << 2) | (int(~b1 & 0x70) << 4) | (int(b1 & 0x06) >> 1);
 
         int m = (b1 >> 7) & 1;
         int d = (b1 >> 3) & 1;
@@ -580,17 +672,19 @@ char *DccPkt::show(char *buf, int buf_len) const
         // "reserved" (232-252) or "advanced extended" (253-254)
         dump(b, e - b);
 
-    }  // if (b0...)
+    } // if (b0...)
 
     return buf;
 
-}  // DccPkt::show
+} // DccPkt::show
 
 //----------------------------------------------------------------------------
 
 bool DccPkt::check_len_min(char *&b, char *e, int min_len) const
 {
-    if (_msg_len >= min_len) return true;
+    if (_msg_len >= min_len) {
+        return true;
+    }
 
     b += snprintf(b, e - b, "(short packet)");
     dump(b, e - b);
@@ -601,7 +695,9 @@ bool DccPkt::check_len_min(char *&b, char *e, int min_len) const
 
 bool DccPkt::check_len_is(char *&b, char *e, int len) const
 {
-    if (_msg_len == len) return true;
+    if (_msg_len == len) {
+        return true;
+    }
 
     b += snprintf(b, e - b, " (unexpected length)");
     dump(b, e - b);
@@ -622,7 +718,7 @@ void DccPkt::show_cv_access(char *&b, char *e, uint8_t instr, int idx) const
     int cv = instr & 0x03;
     cv = (cv << 8) | _msg[idx];
     idx++;
-    cv++;  // by convention, cv number starts at 1
+    cv++; // by convention, cv number starts at 1
 
     uint8_t data = _msg[idx];
     idx++;
@@ -637,8 +733,8 @@ void DccPkt::show_cv_access(char *&b, char *e, uint8_t instr, int idx) const
         b += snprintf(b, e - b, "cv%d=0x%02x?", cv, data);
     } else if (instr == 0x78) {
         // service mode, write or verify bit
-        int bit = data & 0x07;         // 0..7
-        int val = (data & 0x08) >> 3;  // 0..1
+        int bit = data & 0x07;        // 0..7
+        int val = (data & 0x08) >> 3; // 0..1
         if (data & 0x10) {
             // write bit
             b += snprintf(b, e - b, "cv%d[%d]=%d", cv, bit, val);
@@ -657,8 +753,8 @@ void DccPkt::show_cv_access(char *&b, char *e, uint8_t instr, int idx) const
         b += snprintf(b, e - b, "cv%d?", cv);
     } else if (instr == 0xe8) {
         // ops mode, write bit
-        int bit = data & 0x07;         // 0..7
-        int val = (data & 0x08) >> 3;  // 0..1
+        int bit = data & 0x07;        // 0..7
+        int val = (data & 0x08) >> 3; // 0..1
         b += snprintf(b, e - b, "cv%d[%d]=%d", cv, bit, val);
     } else if (instr == 0xec) {
         // ops mode write byte
@@ -667,7 +763,7 @@ void DccPkt::show_cv_access(char *&b, char *e, uint8_t instr, int idx) const
 
     (void)check_len_is(b, e, idx + 1);
 
-}  // DccPkt::show_cv_access
+} // DccPkt::show_cv_access
 
 //----------------------------------------------------------------------------
 
@@ -701,16 +797,17 @@ DccPktSpeed128::DccPktSpeed128(int adrs, int speed)
 
 bool DccPktSpeed128::is_type(const uint8_t *msg, int msg_len)
 {
-    if (msg_len < 1) return false;
-    uint8_t b0 = msg[0];
-    if (1 <= b0 && b0 <= 127)
-        return msg_len == 4 && msg[1] == 0x3f &&
-               DccPkt::check_xor(msg, msg_len);
-    else if (192 <= b0 && b0 <= 231)
-        return msg_len == 5 && msg[2] == 0x3f &&
-               DccPkt::check_xor(msg, msg_len);
-    else
+    if (msg_len < 1) {
         return false;
+    }
+    uint8_t b0 = msg[0];
+    if (1 <= b0 && b0 <= 127) {
+        return msg_len == 4 && msg[1] == 0x3f && DccPkt::check_xor(msg, msg_len);
+    } else if (192 <= b0 && b0 <= 231) {
+        return msg_len == 5 && msg[2] == 0x3f && DccPkt::check_xor(msg, msg_len);
+    } else {
+        return false;
+    }
 }
 
 int DccPktSpeed128::set_address(int adrs)
@@ -723,7 +820,7 @@ int DccPktSpeed128::set_address(int adrs)
 
 int DccPktSpeed128::get_speed() const
 {
-    int idx = get_address_size() + 1;  // skip address and inst byte (0x3f)
+    int idx = get_address_size() + 1; // skip address and inst byte (0x3f)
     return dcc_to_int(_msg[idx]);
 }
 
@@ -731,7 +828,7 @@ void DccPktSpeed128::set_speed(int speed)
 {
     xassert(speed_min <= speed && speed <= speed_max);
 
-    int idx = get_address_size() + 1;  // skip address and inst byte (0x3f)
+    int idx = get_address_size() + 1; // skip address and inst byte (0x3f)
     _msg[idx] = int_to_dcc(speed);
     set_xor();
 }
@@ -741,10 +838,10 @@ void DccPktSpeed128::refresh(int adrs, int speed)
     xassert(address_min <= adrs && adrs <= address_max);
     xassert(speed_min <= speed && speed <= speed_max);
 
-    int idx = DccPkt::set_address(adrs);  // 1 or 2 bytes
-    _msg[idx++] = 0x3f;                   // CCC=001 GGGGG=11111
+    int idx = DccPkt::set_address(adrs); // 1 or 2 bytes
+    _msg[idx++] = 0x3f;                  // CCC=001 GGGGG=11111
     _msg[idx++] = int_to_dcc(speed);
-    _msg_len = idx + 1;  // 4 or 5
+    _msg_len = idx + 1; // 4 or 5
     set_xor();
 }
 
@@ -752,18 +849,20 @@ void DccPktSpeed128::refresh(int adrs, int speed)
 
 uint8_t DccPktSpeed128::int_to_dcc(int speed_int)
 {
-    if (speed_int < 0)
+    if (speed_int < 0) {
         return -speed_int;
-    else
+    } else {
         return speed_int | 0x80;
+    }
 }
 
 int DccPktSpeed128::dcc_to_int(uint8_t speed_dcc)
 {
-    if (speed_dcc & 0x80)
-        return speed_dcc & ~0x80;  // forward, just clear msb
-    else
-        return -int(speed_dcc);  // reverse, return negative of magnitude
+    if (speed_dcc & 0x80) {
+        return speed_dcc & ~0x80; // forward, just clear msb
+    } else {
+        return -int(speed_dcc); // reverse, return negative of magnitude
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -787,9 +886,8 @@ bool DccPktFunc0::get_f(int num) const
 {
     xassert(f_min <= num && num <= f_max);
 
-    int idx = get_address_size();  // skip address
-    uint8_t f_bit =
-        ((num == 0) ? 0x10 : (0x01 << (num - 1)));  // bit for function
+    int idx = get_address_size();                              // skip address
+    uint8_t f_bit = ((num == 0) ? 0x10 : (0x01 << (num - 1))); // bit for function
     return (_msg[idx] & f_bit) != 0;
 }
 
@@ -797,28 +895,29 @@ void DccPktFunc0::set_f(int num, bool on)
 {
     xassert(f_min <= num && num <= f_max);
 
-    int idx = get_address_size();  // skip address
-    uint8_t f_bit =
-        ((num == 0) ? 0x10 : (0x01 << (num - 1)));  // bit for function
-    if (on)
+    int idx = get_address_size();                              // skip address
+    uint8_t f_bit = ((num == 0) ? 0x10 : (0x01 << (num - 1))); // bit for function
+    if (on) {
         _msg[idx] |= f_bit;
-    else
+    } else {
         _msg[idx] &= ~f_bit;
+    }
     set_xor();
 }
 
 bool DccPktFunc0::is_type(const uint8_t *msg, int msg_len)
 {
-    if (msg_len < 1) return false;
-    uint8_t b0 = msg[0];
-    if (1 <= b0 && b0 <= 127)
-        return msg_len == 3 && (msg[1] & 0xe0) == 0x80 &&
-               DccPkt::check_xor(msg, msg_len);
-    else if (192 <= b0 && b0 <= 231)
-        return msg_len == 4 && (msg[2] & 0xe0) == 0x80 &&
-               DccPkt::check_xor(msg, msg_len);
-    else
+    if (msg_len < 1) {
         return false;
+    }
+    uint8_t b0 = msg[0];
+    if (1 <= b0 && b0 <= 127) {
+        return msg_len == 3 && (msg[1] & 0xe0) == 0x80 && DccPkt::check_xor(msg, msg_len);
+    } else if (192 <= b0 && b0 <= 231) {
+        return msg_len == 4 && (msg[2] & 0xe0) == 0x80 && DccPkt::check_xor(msg, msg_len);
+    } else {
+        return false;
+    }
 }
 
 void DccPktFunc0::refresh(int adrs, uint8_t funcs)
@@ -826,16 +925,16 @@ void DccPktFunc0::refresh(int adrs, uint8_t funcs)
     xassert(address_min <= adrs && adrs <= address_max);
     xassert((funcs & ~0x1f) == 0);
 
-    int idx = DccPkt::set_address(adrs);  // 1 or 2 bytes
-    _msg[idx++] = 0x80 | funcs;           // CCC=100, then f0:f4:f3:f2:f1
-    _msg_len = idx + 1;                   // 3 or 4
+    int idx = DccPkt::set_address(adrs); // 1 or 2 bytes
+    _msg[idx++] = 0x80 | funcs;          // CCC=100, then f0:f4:f3:f2:f1
+    _msg_len = idx + 1;                  // 3 or 4
     set_xor();
 }
 
 uint8_t DccPktFunc0::get_funcs() const
 {
-    int idx = get_address_size();  // skip address
-    return _msg[idx] & 0x1f;       // lower 5 bits
+    int idx = get_address_size(); // skip address
+    return _msg[idx] & 0x1f;      // lower 5 bits
 }
 
 //----------------------------------------------------------------------------
@@ -859,8 +958,8 @@ bool DccPktFunc5::get_f(int num) const
 {
     xassert(f_min <= num && num <= f_max);
 
-    int idx = get_address_size();           // skip address
-    uint8_t f_bit = 0x01 << (num - f_min);  // bit for function
+    int idx = get_address_size();          // skip address
+    uint8_t f_bit = 0x01 << (num - f_min); // bit for function
     return (_msg[idx] & f_bit) != 0;
 }
 
@@ -868,27 +967,29 @@ void DccPktFunc5::set_f(int num, bool on)
 {
     xassert(f_min <= num && num <= f_max);
 
-    int idx = get_address_size();           // skip address
-    uint8_t f_bit = 0x01 << (num - f_min);  // bit for function
-    if (on)
+    int idx = get_address_size();          // skip address
+    uint8_t f_bit = 0x01 << (num - f_min); // bit for function
+    if (on) {
         _msg[idx] |= f_bit;
-    else
+    } else {
         _msg[idx] &= ~f_bit;
+    }
     set_xor();
 }
 
 bool DccPktFunc5::is_type(const uint8_t *msg, int msg_len)
 {
-    if (msg_len < 1) return false;
-    uint8_t b0 = msg[0];
-    if (1 <= b0 && b0 <= 127)
-        return msg_len == 3 && (msg[1] & 0xf0) == 0xb0 &&
-               DccPkt::check_xor(msg, msg_len);
-    else if (192 <= b0 && b0 <= 231)
-        return msg_len == 4 && (msg[2] & 0xf0) == 0xb0 &&
-               DccPkt::check_xor(msg, msg_len);
-    else
+    if (msg_len < 1) {
         return false;
+    }
+    uint8_t b0 = msg[0];
+    if (1 <= b0 && b0 <= 127) {
+        return msg_len == 3 && (msg[1] & 0xf0) == 0xb0 && DccPkt::check_xor(msg, msg_len);
+    } else if (192 <= b0 && b0 <= 231) {
+        return msg_len == 4 && (msg[2] & 0xf0) == 0xb0 && DccPkt::check_xor(msg, msg_len);
+    } else {
+        return false;
+    }
 }
 
 void DccPktFunc5::refresh(int adrs, uint8_t funcs)
@@ -896,16 +997,16 @@ void DccPktFunc5::refresh(int adrs, uint8_t funcs)
     xassert(address_min <= adrs && adrs <= address_max);
     xassert((funcs & ~0x0f) == 0);
 
-    int idx = DccPkt::set_address(adrs);  // 1 or 2 bytes
-    _msg[idx++] = 0xb0 | funcs;           // CCC=101, S=1, then f8:f7:f6:f5
-    _msg_len = idx + 1;                   // 3 or 4
+    int idx = DccPkt::set_address(adrs); // 1 or 2 bytes
+    _msg[idx++] = 0xb0 | funcs;          // CCC=101, S=1, then f8:f7:f6:f5
+    _msg_len = idx + 1;                  // 3 or 4
     set_xor();
 }
 
 uint8_t DccPktFunc5::get_funcs() const
 {
-    int idx = get_address_size();  // skip address
-    return _msg[idx] & 0x0f;       // lower 4 bits
+    int idx = get_address_size(); // skip address
+    return _msg[idx] & 0x0f;      // lower 4 bits
 }
 
 //----------------------------------------------------------------------------
@@ -929,8 +1030,8 @@ bool DccPktFunc9::get_f(int num) const
 {
     xassert(f_min <= num && num <= f_max);
 
-    int idx = get_address_size();           // skip address
-    uint8_t f_bit = 0x01 << (num - f_min);  // bit for function
+    int idx = get_address_size();          // skip address
+    uint8_t f_bit = 0x01 << (num - f_min); // bit for function
     return (_msg[idx] & f_bit) != 0;
 }
 
@@ -938,27 +1039,29 @@ void DccPktFunc9::set_f(int num, bool on)
 {
     xassert(f_min <= num && num <= f_max);
 
-    int idx = get_address_size();           // skip address
-    uint8_t f_bit = 0x01 << (num - f_min);  // bit for function
-    if (on)
+    int idx = get_address_size();          // skip address
+    uint8_t f_bit = 0x01 << (num - f_min); // bit for function
+    if (on) {
         _msg[idx] |= f_bit;
-    else
+    } else {
         _msg[idx] &= ~f_bit;
+    }
     set_xor();
 }
 
 bool DccPktFunc9::is_type(const uint8_t *msg, int msg_len)
 {
-    if (msg_len < 1) return false;
-    uint8_t b0 = msg[0];
-    if (1 <= b0 && b0 <= 127)
-        return msg_len == 3 && (msg[1] & 0xf0) == 0xa0 &&
-               DccPkt::check_xor(msg, msg_len);
-    else if (192 <= b0 && b0 <= 231)
-        return msg_len == 4 && (msg[2] & 0xf0) == 0xa0 &&
-               DccPkt::check_xor(msg, msg_len);
-    else
+    if (msg_len < 1) {
         return false;
+    }
+    uint8_t b0 = msg[0];
+    if (1 <= b0 && b0 <= 127) {
+        return msg_len == 3 && (msg[1] & 0xf0) == 0xa0 && DccPkt::check_xor(msg, msg_len);
+    } else if (192 <= b0 && b0 <= 231) {
+        return msg_len == 4 && (msg[2] & 0xf0) == 0xa0 && DccPkt::check_xor(msg, msg_len);
+    } else {
+        return false;
+    }
 }
 
 void DccPktFunc9::refresh(int adrs, uint8_t funcs)
@@ -966,16 +1069,16 @@ void DccPktFunc9::refresh(int adrs, uint8_t funcs)
     xassert(address_min <= adrs && adrs <= address_max);
     xassert((funcs & ~0x0f) == 0);
 
-    int idx = DccPkt::set_address(adrs);  // 1 or 2 bytes
-    _msg[idx++] = 0xa0 | funcs;           // CCC=101, S=0, then f12:f11:f10:f9
-    _msg_len = idx + 1;                   // 3 or 4
+    int idx = DccPkt::set_address(adrs); // 1 or 2 bytes
+    _msg[idx++] = 0xa0 | funcs;          // CCC=101, S=0, then f12:f11:f10:f9
+    _msg_len = idx + 1;                  // 3 or 4
     set_xor();
 }
 
 uint8_t DccPktFunc9::get_funcs() const
 {
-    int idx = get_address_size();  // skip address
-    return _msg[idx] & 0x0f;       // lower 4 bits
+    int idx = get_address_size(); // skip address
+    return _msg[idx] & 0x0f;      // lower 4 bits
 }
 
 //----------------------------------------------------------------------------
@@ -998,32 +1101,32 @@ int DccPktOpsReadCv::set_address(int adrs)
 
 void DccPktOpsReadCv::set_cv(int cv_num)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);  // 1..1024
+    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
-    cv_num--;                      // cv_num is encoded in messages as 0..1023
-    int idx = get_address_size();  // skip address (1 or 2 bytes)
-    _msg[idx++] = 0xe4 | (cv_num >> 8);  // 111001vv
-    _msg[idx++] = cv_num;                // vvvvvvvv
-    _msg[idx++] = 0;                     // 0
-    _msg_len = idx + 1;                  // total (with xor) 5 or 6 bytes
+    cv_num--;                           // cv_num is encoded in messages as 0..1023
+    int idx = get_address_size();       // skip address (1 or 2 bytes)
+    _msg[idx++] = 0xe4 | (cv_num >> 8); // 111001vv
+    _msg[idx++] = cv_num;               // vvvvvvvv
+    _msg[idx++] = 0;                    // 0
+    _msg_len = idx + 1;                 // total (with xor) 5 or 6 bytes
     set_xor();
 }
 
 void DccPktOpsReadCv::refresh(int adrs, int cv_num)
 {
     xassert(address_min <= adrs && adrs <= address_max);
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);  // 1..1024
+    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
-    (void)DccPkt::set_address(adrs);  // insert address (1 or 2 bytes)
-    set_cv(cv_num);                   // insert everything else
+    (void)DccPkt::set_address(adrs); // insert address (1 or 2 bytes)
+    set_cv(cv_num);                  // insert everything else
 }
 
 int DccPktOpsReadCv::get_cv_num() const
 {
-    int idx = get_address_size();           // skip address (1 or 2 bytes)
-    int cv_hi = _msg[idx++] & 0x03;         // get 2 hi bits
-    int cv_num = (cv_hi << 8) | _msg[idx];  // get 8 lo bits
-    return cv_num + 1;  // cv_num is 0..1023 in message, return 1..1024
+    int idx = get_address_size();          // skip address (1 or 2 bytes)
+    int cv_hi = _msg[idx++] & 0x03;        // get 2 hi bits
+    int cv_num = (cv_hi << 8) | _msg[idx]; // get 8 lo bits
+    return cv_num + 1;                     // cv_num is 0..1023 in message, return 1..1024
 }
 
 //----------------------------------------------------------------------------
@@ -1046,47 +1149,46 @@ int DccPktOpsWriteCv::set_address(int adrs)
 
 void DccPktOpsWriteCv::set_cv(int cv_num, uint8_t cv_val)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);  // 1..1024
+    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
-    cv_num--;                      // cv_num is encoded in messages as 0..1023
-    int idx = get_address_size();  // skip address (1 or 2 bytes)
-    _msg[idx++] = 0xec | (cv_num >> 8);  // 111011vv
-    _msg[idx++] = cv_num;                // vvvvvvvv
-    _msg[idx++] = cv_val;                // dddddddd
-    _msg_len = idx + 1;                  // total (with xor) 5 or 6 bytes
+    cv_num--;                           // cv_num is encoded in messages as 0..1023
+    int idx = get_address_size();       // skip address (1 or 2 bytes)
+    _msg[idx++] = 0xec | (cv_num >> 8); // 111011vv
+    _msg[idx++] = cv_num;               // vvvvvvvv
+    _msg[idx++] = cv_val;               // dddddddd
+    _msg_len = idx + 1;                 // total (with xor) 5 or 6 bytes
     set_xor();
 }
 
 void DccPktOpsWriteCv::refresh(int adrs, int cv_num, uint8_t cv_val)
 {
     xassert(address_min <= adrs && adrs <= address_max);
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);  // 1..1024
+    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
-    (void)DccPkt::set_address(adrs);  // insert address (1 or 2 bytes)
-    set_cv(cv_num, cv_val);           // insert everything else
+    (void)DccPkt::set_address(adrs); // insert address (1 or 2 bytes)
+    set_cv(cv_num, cv_val);          // insert everything else
 }
 
 int DccPktOpsWriteCv::get_cv_num() const
 {
-    int idx = get_address_size();           // skip address (1 or 2 bytes)
-    int cv_hi = _msg[idx++] & 0x03;         // get 2 hi bits
-    int cv_num = (cv_hi << 8) | _msg[idx];  // get 8 lo bits
-    return cv_num + 1;  // cv_num is 0..1023 in message, return 1..1024
+    int idx = get_address_size();          // skip address (1 or 2 bytes)
+    int cv_hi = _msg[idx++] & 0x03;        // get 2 hi bits
+    int cv_num = (cv_hi << 8) | _msg[idx]; // get 8 lo bits
+    return cv_num + 1;                     // cv_num is 0..1023 in message, return 1..1024
 }
 
 uint8_t DccPktOpsWriteCv::get_cv_val() const
 {
-    int idx = get_address_size() + 2;  // skip address, instruction, cv_num
+    int idx = get_address_size() + 2; // skip address, instruction, cv_num
     return _msg[idx];
 }
 
 //----------------------------------------------------------------------------
 
-DccPktOpsWriteBit::DccPktOpsWriteBit(int adrs, int cv_num, int bit_num,
-                                     int bit_val)
+DccPktOpsWriteBit::DccPktOpsWriteBit(int adrs, int cv_num, int bit_num, int bit_val)
 {
     xassert(address_min <= adrs && adrs <= address_max);
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);  // 1..1024
+    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
     xassert(0 <= bit_num && bit_num <= 7);
     xassert(bit_val == 0 || bit_val == 1);
 
@@ -1094,7 +1196,10 @@ DccPktOpsWriteBit::DccPktOpsWriteBit(int adrs, int cv_num, int bit_num,
 }
 
 // constructor for when we know we'll be setting fields later
-DccPktOpsWriteBit::DccPktOpsWriteBit() { refresh(3, 8, 0, 0); }
+DccPktOpsWriteBit::DccPktOpsWriteBit()
+{
+    refresh(3, 8, 0, 0);
+}
 
 int DccPktOpsWriteBit::set_address(int adrs)
 {
@@ -1107,16 +1212,16 @@ int DccPktOpsWriteBit::set_address(int adrs)
 // set cv_num, bit_num, and bit_val in message
 void DccPktOpsWriteBit::set_cv_bit(int cv_num, int bit_num, int bit_val)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);  // 1..1024
+    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
     xassert(0 <= bit_num && bit_num <= 7);
     xassert(bit_val == 0 || bit_val == 1);
 
-    cv_num--;                      // cv_num is encoded in messages as 0..1023
-    int idx = get_address_size();  // skip address (1 or 2 bytes)
-    _msg[idx++] = 0xe8 | (cv_num >> 8);             // 111010vv
-    _msg[idx++] = cv_num;                           // vvvvvvvv
-    _msg[idx++] = 0xf0 | (bit_val << 3) | bit_num;  // dddddddd
-    _msg_len = idx + 1;  // total (with xor) 5 or 6 bytes
+    cv_num--;                                      // cv_num is encoded in messages as 0..1023
+    int idx = get_address_size();                  // skip address (1 or 2 bytes)
+    _msg[idx++] = 0xe8 | (cv_num >> 8);            // 111010vv
+    _msg[idx++] = cv_num;                          // vvvvvvvv
+    _msg[idx++] = 0xf0 | (bit_val << 3) | bit_num; // dddddddd
+    _msg_len = idx + 1;                            // total (with xor) 5 or 6 bytes
     set_xor();
 }
 
@@ -1124,55 +1229,55 @@ void DccPktOpsWriteBit::set_cv_bit(int cv_num, int bit_num, int bit_val)
 void DccPktOpsWriteBit::refresh(int adrs, int cv_num, int bit_num, int bit_val)
 {
     xassert(address_min <= adrs && adrs <= address_max);
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);  // 1..1024
+    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
     xassert(0 <= bit_num && bit_num <= 7);
     xassert(bit_val == 0 || bit_val == 1);
 
-    (void)DccPkt::set_address(adrs);       // insert address (1 or 2 bytes)
-    set_cv_bit(cv_num, bit_num, bit_val);  // insert everything else
+    (void)DccPkt::set_address(adrs);      // insert address (1 or 2 bytes)
+    set_cv_bit(cv_num, bit_num, bit_val); // insert everything else
 }
 
 // get cv_num from message
 int DccPktOpsWriteBit::get_cv_num() const
 {
-    int idx = get_address_size();           // skip address (1 or 2 bytes)
-    int cv_hi = _msg[idx++] & 0x03;         // get 2 hi bits
-    int cv_num = (cv_hi << 8) | _msg[idx];  // get 8 lo bits
-    return cv_num + 1;  // cv_num is 0..1023 in message, return 1..1024
+    int idx = get_address_size();          // skip address (1 or 2 bytes)
+    int cv_hi = _msg[idx++] & 0x03;        // get 2 hi bits
+    int cv_num = (cv_hi << 8) | _msg[idx]; // get 8 lo bits
+    return cv_num + 1;                     // cv_num is 0..1023 in message, return 1..1024
 }
 
 // get bit_num from message
 int DccPktOpsWriteBit::get_bit_num() const
 {
-    int idx = get_address_size() + 2;  // skip address, instruction, cv_num
-    return _msg[idx] & 0x07;           // return lo 3 bits
+    int idx = get_address_size() + 2; // skip address, instruction, cv_num
+    return _msg[idx] & 0x07;          // return lo 3 bits
 }
 
 // get bit_val from message
 int DccPktOpsWriteBit::get_bit_val() const
 {
-    int idx = get_address_size() + 2;  // skip address, instruction, cv_num
-    return (_msg[idx] >> 3) & 1;       // return bit 3
+    int idx = get_address_size() + 2; // skip address, instruction, cv_num
+    return (_msg[idx] >> 3) & 1;      // return bit 3
 }
 
 //----------------------------------------------------------------------------
 
 DccPktSvcWriteCv::DccPktSvcWriteCv(int cv_num, uint8_t cv_val)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);  // 1..1024
+    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
     set_cv(cv_num, cv_val);
 }
 
 void DccPktSvcWriteCv::set_cv(int cv_num, uint8_t cv_val)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);  // 1..1024
+    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
-    cv_num--;                        // cv_num is encoded in messages as 0..1023
-    _msg[0] = 0x7c | (cv_num >> 8);  // 0111CCAA, CC=11 "write byte"
-    _msg[1] = cv_num;                // AAAAAAAA
-    _msg[2] = cv_val;                // DDDDDDDD
-    _msg_len = 4;                    // total (with xor) 4 bytes
+    cv_num--;                       // cv_num is encoded in messages as 0..1023
+    _msg[0] = 0x7c | (cv_num >> 8); // 0111CCAA, CC=11 "write byte"
+    _msg[1] = cv_num;               // AAAAAAAA
+    _msg[2] = cv_val;               // DDDDDDDD
+    _msg_len = 4;                   // total (with xor) 4 bytes
     set_xor();
 }
 
@@ -1180,18 +1285,18 @@ void DccPktSvcWriteCv::set_cv(int cv_num, uint8_t cv_val)
 
 DccPktSvcWriteBit::DccPktSvcWriteBit(int cv_num, int bit_num, int bit_val)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);  // 1..1024
+    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
     set_cv_bit(cv_num, bit_num, bit_val);
 }
 
 void DccPktSvcWriteBit::set_cv_bit(int cv_num, int bit_num, int bit_val)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);  // 1..1024
+    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
     xassert(0 <= bit_num && bit_num <= 7);
     xassert(bit_val == 0 || bit_val == 1);
 
-    cv_num--;  // cv_num is encoded in messages as 0..1023
+    cv_num--; // cv_num is encoded in messages as 0..1023
     _msg[0] = 0x78 | (cv_num >> 8);
     _msg[1] = cv_num;
     _msg[2] = 0xf0 | (bit_val << 3) | bit_num;
@@ -1203,7 +1308,7 @@ void DccPktSvcWriteBit::set_cv_bit(int cv_num, int bit_num, int bit_val)
 
 DccPktSvcVerifyCv::DccPktSvcVerifyCv(int cv_num, uint8_t cv_val)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);  // 1..1024
+    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
     set_cv_num(cv_num);
     set_cv_val(cv_val);
@@ -1211,13 +1316,13 @@ DccPktSvcVerifyCv::DccPktSvcVerifyCv(int cv_num, uint8_t cv_val)
 
 void DccPktSvcVerifyCv::set_cv_num(int cv_num)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);  // 1..1024
+    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
-    cv_num--;                        // cv_num is encoded in messages as 0..1023
-    _msg[0] = 0x74 | (cv_num >> 8);  // 0111CCAA, CC=01 "verify byte"
-    _msg[1] = cv_num;                // AAAAAAAA
+    cv_num--;                       // cv_num is encoded in messages as 0..1023
+    _msg[0] = 0x74 | (cv_num >> 8); // 0111CCAA, CC=01 "verify byte"
+    _msg[1] = cv_num;               // AAAAAAAA
     //_msg[2] = cv_val;               // DDDDDDDD
-    _msg_len = 4;  // total (with xor) 4 bytes
+    _msg_len = 4; // total (with xor) 4 bytes
     set_xor();
 }
 
@@ -1225,8 +1330,8 @@ void DccPktSvcVerifyCv::set_cv_val(uint8_t cv_val)
 {
     //_msg[0] = 0x74 | (cv_num >> 8); // 0111CCAA, CC=01 "verify byte"
     //_msg[1] = cv_num;               // AAAAAAAA
-    _msg[2] = cv_val;  // DDDDDDDD
-    _msg_len = 4;      // total (with xor) 4 bytes
+    _msg[2] = cv_val; // DDDDDDDD
+    _msg_len = 4;     // total (with xor) 4 bytes
     set_xor();
 }
 
@@ -1234,7 +1339,7 @@ void DccPktSvcVerifyCv::set_cv_val(uint8_t cv_val)
 
 DccPktSvcVerifyBit::DccPktSvcVerifyBit(int cv_num, int bit_num, int bit_val)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);  // 1..1024
+    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
     xassert(0 <= bit_num && bit_num <= 7);
     xassert(bit_val == 0 || bit_val == 1);
 
@@ -1244,12 +1349,12 @@ DccPktSvcVerifyBit::DccPktSvcVerifyBit(int cv_num, int bit_num, int bit_val)
 
 void DccPktSvcVerifyBit::set_cv_num(int cv_num)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);  // 1..1024
+    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
-    cv_num--;  // cv_num is encoded in messages as 0..1023
+    cv_num--; // cv_num is encoded in messages as 0..1023
     _msg[0] = 0x78 | (cv_num >> 8);
     _msg[1] = cv_num;
-    _msg[2] = 0xe0;  // bit_val=0, bit_num=0 (set later)
+    _msg[2] = 0xe0; // bit_val=0, bit_num=0 (set later)
     _msg_len = 4;
     set_xor();
 }
@@ -1291,16 +1396,21 @@ DccPkt create(const uint8_t *msg, int msg_len)
 
 DccPkt::PktType DccPkt::decode_type(const uint8_t *msg, int msg_len)
 {
-    if (msg_len < 3) return Invalid;
+    if (msg_len < 3) {
+        return Invalid;
+    }
 
-    if (!check_xor(msg, msg_len)) return Invalid;
+    if (!check_xor(msg, msg_len)) {
+        return Invalid;
+    }
 
     uint8_t b0 = msg[0];
     if (b0 == 0) {
-        if (msg_len == 3 && msg[1] == 0 && msg[2] == 0)
+        if (msg_len == 3 && msg[1] == 0 && msg[2] == 0) {
             return Reset;
-        else
+        } else {
             return Invalid;
+        }
     } else if (b0 <= 127) {
         // 1..127: multifunction decoder with 7-bit address
         return decode_payload(msg + 1, msg_len - 1);
@@ -1318,10 +1428,11 @@ DccPkt::PktType DccPkt::decode_type(const uint8_t *msg, int msg_len)
         return Advanced;
     } else {
         // 255
-        if (msg_len == 3 && msg[1] == 0 && msg[2] == 0xff)
+        if (msg_len == 3 && msg[1] == 0 && msg[2] == 0xff) {
             return Idle;
-        else
+        } else {
             return Invalid;
+        }
     }
 }
 
@@ -1349,7 +1460,7 @@ DccPkt::PktType DccPkt::decode_payload(const uint8_t *pay, int pay_len)
     } else if (ccc == 4) {
         // 2.3.4 Function Group 1
         if (pay_len == 2) {
-            return Func0;  // F0..F4
+            return Func0; // F0..F4
         } else {
             return Invalid;
         }
@@ -1357,9 +1468,9 @@ DccPkt::PktType DccPkt::decode_payload(const uint8_t *pay, int pay_len)
         // 2.3.5 Function Group 2
         if (pay_len == 2) {
             if ((pay[0] & 0x10) != 0) {
-                return Func5;  // F5..F8
+                return Func5; // F5..F8
             } else {
-                return Func9;  // F9..F12
+                return Func9; // F9..F12
             }
         } else {
             return Invalid;
@@ -1396,11 +1507,11 @@ DccPkt::PktType DccPkt::decode_payload(const uint8_t *pay, int pay_len)
         } else {
             return Unimplemented;
         }
-    } else {  // (ccc == 7)
+    } else { // (ccc == 7)
         // 2.3.7 Configuration Variable Access
         uint8_t p0 = pay[0];
         if ((p0 & 0x10) == 0x10) {
-            return Unimplemented;  // Short form
+            return Unimplemented; // Short form
         } else {
             if (pay_len == 4) {
                 // Long form
@@ -1411,12 +1522,12 @@ DccPkt::PktType DccPkt::decode_payload(const uint8_t *pay, int pay_len)
                     return OpsRead1Cv;
                 } else if (gg == 2) {
                     return OpsWriteBit;
-                } else {  // (gg == 3)
+                } else { // (gg == 3)
                     return OpsWriteCv;
                 }
             } else {
-                return Unimplemented;  // fancier xpom
+                return Unimplemented; // fancier xpom
             }
         }
     }
-}  // DccPkt::PktType DccPkt::decode_payload(...)
+} // DccPkt::PktType DccPkt::decode_payload(...)

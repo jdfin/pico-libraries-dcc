@@ -11,10 +11,10 @@
 #include "dcc_throttle.h"
 #include "xassert.h"
 
-static uart_inst_t* rc_uart = uart0;
+static uart_inst_t *rc_uart = uart0;
 static int rc_gpio = 17;
 
-DccCommand::DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc& adc) :
+DccCommand::DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc &adc) :
     _bitstream(sig_gpio, pwr_gpio, rc_uart, rc_gpio),
     _adc(adc),
     _mode(MODE_OFF),
@@ -45,7 +45,7 @@ DccCommand::DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc& adc) :
 
 DccCommand::~DccCommand()
 {
-    for (DccThrottle* t : _throttles) {
+    for (DccThrottle *t : _throttles) {
         _throttles.remove(t);
         delete t;
     }
@@ -121,23 +121,25 @@ void DccCommand::mode_svc_read_bit(int cv_num, int bit_num)
     _bitstream.start_svc();
 }
 
-bool DccCommand::svc_done(bool& result)
+bool DccCommand::svc_done(bool &result)
 {
-    if (_svc_status == IN_PROGRESS)
+    if (_svc_status == IN_PROGRESS) {
         return false;
+    }
 
     result = (_svc_status == SUCCESS);
     return true;
 }
 
-bool DccCommand::svc_done(bool& result, uint8_t& val)
+bool DccCommand::svc_done(bool &result, uint8_t &val)
 {
-    if (_svc_status == IN_PROGRESS)
+    if (_svc_status == IN_PROGRESS) {
         return false;
+    }
 
     result = (_svc_status == SUCCESS);
 
-    val = _cv_val;  // return even if !result
+    val = _cv_val; // return even if !result
 
     return true;
 }
@@ -145,7 +147,7 @@ bool DccCommand::svc_done(bool& result, uint8_t& val)
 void DccCommand::loop()
 {
     if (_mode == MODE_OFF) {
-        ;  // nop
+        ; // nop
     } else if (_mode == MODE_OPS) {
         loop_ops();
     } else if (_mode == MODE_SVC_WRITE_CV) {
@@ -161,7 +163,7 @@ void DccCommand::loop()
         _adc.loop();
         loop_svc_read_bit();
     }
-    const char* p = _bitstream.get_log_line();
+    const char *p = _bitstream.get_log_line();
     if (p != nullptr) {
         // DCC packets start with "D ", RailCom packets start with "R ".
         // They should alternate. Print the DCC packet and keep track of how
@@ -170,17 +172,19 @@ void DccCommand::loop()
         static int dcc_last = 0;
         if (p[0] == 'D' && p[1] == ' ') {
             // DCC packet
-            dcc_last = printf("%s", p+2); // p+2 to skip "D "
+            dcc_last = printf("%s", p + 2); // p+2 to skip "D "
         } else if (p[0] == 'R' && p[1] == ' ') {
             // RailCom packet - tab over, then print
-            for (int i = dcc_last; i < dcc_cols; i++)
+            for (int i = dcc_last; i < dcc_cols; i++) {
                 printf(" ");
-            printf("%s\n", p+2); // p+2 to skip "R "
+            }
+            printf("%s\n", p + 2); // p+2 to skip "R "
             dcc_last = 0;
         } else {
             // Unknown - just print it, always on a new line
-            if (dcc_last > 0)
+            if (dcc_last > 0) {
                 printf("\n");
+            }
             printf("{%s}\n", p);
             dcc_last = 0;
         }
@@ -193,8 +197,9 @@ void DccCommand::loop_ops()
         if (_next_throttle != _throttles.end()) {
             _bitstream.send_packet((*_next_throttle)->next_packet());
             _next_throttle++;
-            if (_next_throttle == _throttles.end())
+            if (_next_throttle == _throttles.end()) {
                 _next_throttle = _throttles.begin();
+            }
         }
     }
 }
@@ -249,14 +254,15 @@ void DccCommand::loop_svc_write_cv()
         } else {
             xassert(_write_cnt == 0);
             xassert(_reset2_cnt == 0);
-            if (_svc_status_next == IN_PROGRESS)
-                _svc_status = ERROR;  // failed, timeout
-            else
+            if (_svc_status_next == IN_PROGRESS) {
+                _svc_status = ERROR; // failed, timeout
+            } else {
                 _svc_status = SUCCESS;
+            }
             mode_off();
         }
     }
-}  // void DccCommand::loop_svc_write_cv()
+} // void DccCommand::loop_svc_write_cv()
 
 void DccCommand::loop_svc_write_bit()
 {
@@ -309,14 +315,15 @@ void DccCommand::loop_svc_write_bit()
         } else {
             xassert(_write_cnt == 0);
             xassert(_reset2_cnt == 0);
-            if (_svc_status_next == IN_PROGRESS)
-                _svc_status = ERROR;  // failed, timeout
-            else
+            if (_svc_status_next == IN_PROGRESS) {
+                _svc_status = ERROR; // failed, timeout
+            } else {
                 _svc_status = SUCCESS;
+            }
             mode_off();
         }
     }
-}  // void DccCommand::loop_svc_write_bit()
+} // void DccCommand::loop_svc_write_bit()
 
 // Before the first call (when starting the read), mode_svc_read_cv() sets:
 //   _reset1_cnt to the number of initial resets (20)
@@ -349,8 +356,9 @@ void DccCommand::loop_svc_read_cv()
         xassert(_verify_cnt == 0);
         xassert(_reset2_cnt == 0);
 
-        if (!_bitstream.need_packet())
+        if (!_bitstream.need_packet()) {
             return;
+        }
 
         _bitstream.send_reset();
         _reset1_cnt--;
@@ -389,13 +397,15 @@ void DccCommand::loop_svc_read_cv()
     if (_verify_cnt > 0) {
         xassert(_reset2_cnt == 0);
         if (_bitstream.need_packet()) {
-            if (_verify_bit == 8)
+            if (_verify_bit == 8) {
                 _bitstream.send_packet(_pkt_svc_verify_cv);
-            else
+            } else {
                 _bitstream.send_packet(_pkt_svc_verify_bit);
+            }
             _verify_cnt--;
-            if (_verify_cnt == 0)
+            if (_verify_cnt == 0) {
                 _reset2_cnt = 5;
+            }
         }
     } else if (_reset2_cnt > 0) {
         xassert(_verify_cnt == 0);
@@ -417,10 +427,11 @@ void DccCommand::loop_svc_read_cv()
         xassert(_reset2_cnt == 0);
         if (_verify_bit == 8) {
             // done with the byte verify at the end
-            if (_svc_status_next == IN_PROGRESS)
-                _svc_status = ERROR;  // failed, timeout
-            else
+            if (_svc_status_next == IN_PROGRESS) {
+                _svc_status = ERROR; // failed, timeout
+            } else {
                 _svc_status = SUCCESS;
+            }
             mode_off();
         } else if (_verify_bit > 0) {
             // done with a single-bit verify
@@ -432,13 +443,13 @@ void DccCommand::loop_svc_read_cv()
         } else {
             xassert(_verify_bit == 0);
             // start byte verify
-            _verify_bit = 8;  // signifies verify byte
+            _verify_bit = 8; // signifies verify byte
             _pkt_svc_verify_cv.set_cv_val(_cv_val);
             _verify_cnt = 5;
         }
     }
 
-}  // void DccCommand::loop_svc_read_cv
+} // void DccCommand::loop_svc_read_cv
 
 void DccCommand::loop_svc_read_bit()
 {
@@ -450,8 +461,9 @@ void DccCommand::loop_svc_read_bit()
         xassert(_verify_cnt == 0);
         xassert(_reset2_cnt == 0);
 
-        if (!_bitstream.need_packet())
+        if (!_bitstream.need_packet()) {
             return;
+        }
 
         _bitstream.send_reset();
         _reset1_cnt--;
@@ -460,7 +472,7 @@ void DccCommand::loop_svc_read_bit()
             _ack_ma = _adc.long_ma() + ack_inc_ma;
             // printf("long_ma = %u, ack_ma = %u\n", long_ma, _ack_ma);
             xassert(_verify_bit >= 0 && _verify_bit <= 7);
-            _verify_bit_val = 0;  // first 0, then 1 if no ack for 0
+            _verify_bit_val = 0; // first 0, then 1 if no ack for 0
             _verify_cnt = 5;
             _pkt_svc_verify_bit.set_bit(_verify_bit, _verify_bit_val);
         }
@@ -488,8 +500,9 @@ void DccCommand::loop_svc_read_bit()
         if (_bitstream.need_packet()) {
             _bitstream.send_packet(_pkt_svc_verify_bit);
             _verify_cnt--;
-            if (_verify_cnt == 0)
+            if (_verify_cnt == 0) {
                 _reset2_cnt = 5;
+            }
         }
     } else if (_reset2_cnt > 0) {
         xassert(_verify_cnt == 0);
@@ -508,35 +521,40 @@ void DccCommand::loop_svc_read_bit()
             _pkt_svc_verify_bit.set_bit(_verify_bit, _verify_bit_val);
         } else {
             // tried 0, then 1; hopefully got an ack for one of them
-            if (_svc_status_next == IN_PROGRESS)
-                _svc_status = ERROR;  // didn't get an ack for either
-            else
+            if (_svc_status_next == IN_PROGRESS) {
+                _svc_status = ERROR; // didn't get an ack for either
+            } else {
                 _svc_status = SUCCESS;
+            }
             mode_off();
         }
     }
 
-}  // void DccCommand::loop_svc_read_bit
+} // void DccCommand::loop_svc_read_bit
 
-DccThrottle* DccCommand::find_throttle(int address)
+DccThrottle *DccCommand::find_throttle(int address)
 {
-    if (address < DccPkt::address_min || address > DccPkt::address_max)
+    if (address < DccPkt::address_min || address > DccPkt::address_max) {
         return nullptr;
+    }
 
-    for (DccThrottle* t : _throttles)
-        if (t->get_address() == address)
+    for (DccThrottle *t : _throttles) {
+        if (t->get_address() == address) {
             return t;
+        }
+    }
 
     // address not found
     return nullptr;
 }
 
-DccThrottle* DccCommand::create_throttle(int address)
+DccThrottle *DccCommand::create_throttle(int address)
 {
-    if (address < DccPkt::address_min || address > DccPkt::address_max)
+    if (address < DccPkt::address_min || address > DccPkt::address_max) {
         return nullptr;
+    }
 
-    DccThrottle* throttle = find_throttle(address);
+    DccThrottle *throttle = find_throttle(address);
     if (throttle == nullptr) {
         throttle = new DccThrottle(address);
         _throttles.push_back(throttle);
@@ -546,7 +564,7 @@ DccThrottle* DccCommand::create_throttle(int address)
     return throttle;
 }
 
-DccThrottle *DccCommand::delete_throttle(DccThrottle* throttle)
+DccThrottle *DccCommand::delete_throttle(DccThrottle *throttle)
 {
     _throttles.remove(throttle);
     delete throttle;
@@ -556,7 +574,7 @@ DccThrottle *DccCommand::delete_throttle(DccThrottle* throttle)
 
 DccThrottle *DccCommand::delete_throttle(int address)
 {
-    for (DccThrottle* throttle : _throttles) {
+    for (DccThrottle *throttle : _throttles) {
         if (throttle->get_address() == address) {
             delete_throttle(throttle);
             return *_throttles.begin();
@@ -568,12 +586,13 @@ DccThrottle *DccCommand::delete_throttle(int address)
 
 void DccCommand::restart_throttles()
 {
-    _throttles.sort([](const DccThrottle* a, const DccThrottle* b) {
+    _throttles.sort([](const DccThrottle *a, const DccThrottle *b) {
         return a->get_address() < b->get_address();
     });
 
-    for (DccThrottle* t : _throttles)
+    for (DccThrottle *t : _throttles) {
         t->restart();
+    }
 
     _next_throttle = _throttles.begin();
 }
@@ -583,7 +602,7 @@ void DccCommand::show()
     if (_throttles.empty()) {
         printf("no throttles\n");
     } else {
-        for (DccThrottle* throttle : _throttles) {
+        for (DccThrottle *throttle : _throttles) {
             printf("throttle:\n");
             throttle->show();
         }

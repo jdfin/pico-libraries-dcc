@@ -1,7 +1,6 @@
 #pragma once
 
-namespace DccCv
-{
+namespace DccCv {
 
 const int address = 1;
 const int acceleration = 3;
@@ -25,7 +24,7 @@ const int bell_vol = 283;
 const int clank_vol = 291;
 const int squeal_vol = 435;
 
-};
+}; // namespace DccCv
 
 // SP2265
 //

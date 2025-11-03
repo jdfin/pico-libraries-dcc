@@ -12,7 +12,7 @@ class DccBitstream
 
 public:
 
-    DccBitstream(int sig_gpio, int pwr_gpio, uart_inst_t* uart = nullptr, int rc_gpio = -1);
+    DccBitstream(int sig_gpio, int pwr_gpio, uart_inst_t *uart = nullptr, int rc_gpio = -1);
     ~DccBitstream();
 
     void start_ops();
@@ -24,19 +24,22 @@ public:
         return (_next == &_pkt_idle);
     }
 
-    void send_packet(const DccPkt& pkt);
+    void send_packet(const DccPkt &pkt);
 
     void send_reset()
     {
         send_packet(_pkt_reset);
     }
 
-    const char *get_log_line() {
-        if (_log_get == _log_put)
+    const char *get_log_line()
+    {
+        if (_log_get == _log_put) {
             return nullptr;
+        }
         const char *p = _log[_log_get];
-        if (++_log_get >= log_line_cnt)
+        if (++_log_get >= log_line_cnt) {
             _log_get = 0;
+        }
         return p;
     }
 
@@ -56,18 +59,18 @@ private:
     //   _next = _pkt_idle
     //   start packet at _current with _preamble_bits
 
-    DccPkt* _current;
-    DccPkt* _next;     // never nullptr; &_pkt_idle if nothing to send
+    DccPkt *_current;
+    DccPkt *_next; // never nullptr; &_pkt_idle if nothing to send
 
     int _preamble_bits;
 
-    uint _slice;    // uint to match pico-sdk
-    uint _channel;  // uint to match pico-sdk
+    uint _slice;   // uint to match pico-sdk
+    uint _channel; // uint to match pico-sdk
 
-    int _byte;  // -1 for preamble, then index in _current
-    int _bit;   // counts down bit in preamble or _byte
+    int _byte; // -1 for preamble, then index in _current
+    int _bit;  // counts down bit in preamble or _byte
 
-    void start(int preamble_bits, DccPkt& first);
+    void start(int preamble_bits, DccPkt &first);
 
     void prog_bit(int b, int power_qtr = 4)
     {
@@ -95,6 +98,6 @@ private:
     int _log_put;
     int _log_get;
 
-    static void pwm_handler(void* arg);
+    static void pwm_handler(void *arg);
 
-};  // class DccBitstream
+}; // class DccBitstream

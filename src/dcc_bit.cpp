@@ -1,8 +1,10 @@
-#include <cstdint>
-#include <climits>
-#include <cstdio>
-#include "xassert.h"
 #include "dcc_bit.h"
+
+#include <climits>
+#include <cstdint>
+#include <cstdio>
+
+#include "xassert.h"
 
 
 DccBit::DccBit(int verbosity) :
@@ -35,10 +37,12 @@ void DccBit::on_pkt_recv(pkt_recv_t *pkt_recv)
 
 void DccBit::init()
 {
-    if (_verbosity > 0)
+    if (_verbosity > 0) {
         printf("verbosity=%d\n", _verbosity);
-    if (_verbosity >= 4)
+    }
+    if (_verbosity >= 4) {
         printf(">UNSYNC\n");
+    }
 }
 
 
@@ -62,8 +66,9 @@ void DccBit::edge(uint64_t edge_us)
 void DccBit::half_bit(int half)
 {
     if (half != 0 && half != 1) {
-        if (_bit_state != UNSYNC && _verbosity >= 4)
+        if (_bit_state != UNSYNC && _verbosity >= 4) {
             printf(" >UNSYNC");
+        }
         _bit_state = UNSYNC;
         _bad_cnt++;
         return;
@@ -75,8 +80,9 @@ void DccBit::half_bit(int half)
             if (half == 1) {
                 _preamble = 1;
                 _bit_state = PREAMBLE;
-                if (_verbosity >= 4)
+                if (_verbosity >= 4) {
                     printf(" >PREAMBLE");
+                }
             } else {
                 // stay in UNSYNC
             }
@@ -92,16 +98,19 @@ void DccBit::half_bit(int half)
                     _bit_num = 0;
                     _bit = 0;
                     _bit_state = BIT_H;
-                    if (_verbosity >= 4)
+                    if (_verbosity >= 4) {
                         printf(" %d >BIT_H", _preamble);
+                    }
                     _start_us = _edge_us;
-                    if (_zero_us == UINT64_MAX)
+                    if (_zero_us == UINT64_MAX) {
                         _zero_us = _start_us;
+                    }
                 } else {
                     // preamble not long enough
                     _bit_state = UNSYNC;
-                    if (_verbosity >= 4)
+                    if (_verbosity >= 4) {
                         printf(" %d >UNSYNC", _preamble);
+                    }
                 }
             } else { // half == 1
                 _preamble++;
@@ -117,13 +126,15 @@ void DccBit::half_bit(int half)
                     // the final '1' counts in the next preamble
                     _preamble = 2;
                     _bit_state = PREAMBLE;
-                    if (_verbosity >= 4)
+                    if (_verbosity >= 4) {
                         printf(" >PREAMBLE");
+                    }
                 } else {
                     // still receiving packet
                     _bit_state = BIT;
-                    if (_verbosity >= 4)
+                    if (_verbosity >= 4) {
                         printf(" >BIT");
+                    }
                 }
             } else { // half != _bit
                 // Either got a half-one when expecting a half-zero, or half-
@@ -132,13 +143,15 @@ void DccBit::half_bit(int half)
                 // preamble.
                 if (half == 0) {
                     _bit_state = UNSYNC;
-                    if (_verbosity >= 4)
+                    if (_verbosity >= 4) {
                         printf(" >UNSYNC");
+                    }
                 } else { // half == 1
                     _preamble = 1;
                     _bit_state = PREAMBLE;
-                    if (_verbosity >= 4)
+                    if (_verbosity >= 4) {
                         printf(" >PREAMBLE");
+                    }
                 }
             }
             break;
@@ -146,8 +159,9 @@ void DccBit::half_bit(int half)
         case BIT:
             _bit = half;
             _bit_state = BIT_H;
-            if (_verbosity >= 4)
+            if (_verbosity >= 4) {
                 printf(" >BIT_H");
+            }
             break;
 
         default:
@@ -165,8 +179,9 @@ bool DccBit::bit_rx()
 {
     xassert(_bit == 0 || _bit == 1);
 
-    if (_verbosity >= 3)
+    if (_verbosity >= 3) {
         printf(" bit=%d", _bit);
+    }
 
     // _bit_num 0 is the start bit
     // If zero, starting the next byte; if one, emit packet in progress.
@@ -177,15 +192,18 @@ bool DccBit::bit_rx()
     if (_bit_num == 0) {
         if (_bit == 0) {
             // end of byte (or preamble), continue packet
-            if (_verbosity >= 3)
+            if (_verbosity >= 3) {
                 printf(" start");
+            }
             _bit_num++;
         } else {
             // end of packet
-            if (_verbosity >= 3)
+            if (_verbosity >= 3) {
                 printf(" end");
-            if (_pkt_recv != nullptr)
+            }
+            if (_pkt_recv != nullptr) {
                 (*_pkt_recv)(_pkt, _pkt_len, _preamble / 2, _start_us, _bad_cnt);
+            }
             _bit_num = 0;
             _bad_cnt = 0;
             return true;
@@ -198,8 +216,9 @@ bool DccBit::bit_rx()
     } else { // _bit_num == 8
         _byte = (_byte << 1) | _bit;
         // last bit in byte, append to packet
-        if (_verbosity >= 2)
+        if (_verbosity >= 2) {
             printf(" byte=%02x", _byte);
+        }
         _pkt[_pkt_len++] = _byte;
         _bit_num = 0;
         // pkt_recv() is called when a valid stop bit is seen

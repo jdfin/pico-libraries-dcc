@@ -1,8 +1,10 @@
 #include "dcc_throttle.h"
-#include "dcc_pkt.h"
-#include "xassert.h"
+
 #include <cstdint>
 #include <cstdio>
+
+#include "dcc_pkt.h"
+#include "xassert.h"
 
 DccThrottle::DccThrottle(int address) :
     _pkt_speed(address),

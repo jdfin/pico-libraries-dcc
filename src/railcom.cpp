@@ -1,16 +1,17 @@
 
 #include "railcom.h"
-#include "hardware/gpio.h"
-#include "hardware/uart.h"
 
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 
 #include "dbg_gpio.h"
+#include "hardware/gpio.h"
+#include "hardware/uart.h"
 #include "xassert.h"
 
-RailCom::RailCom(uart_inst_t* uart, int rx_gpio, int dbg_gpio) :
+
+RailCom::RailCom(uart_inst_t *uart, int rx_gpio, int dbg_gpio) :
     _uart(uart),
     _rx_gpio(rx_gpio),
     _dbg_gpio(dbg_gpio),
@@ -19,15 +20,19 @@ RailCom::RailCom(uart_inst_t* uart, int rx_gpio, int dbg_gpio) :
     _ch2_msg_cnt(0),
     _parsed_all(false)
 {
-    if (_uart == nullptr || _rx_gpio < 0)
+    if (_uart == nullptr || _rx_gpio < 0) {
         return;
+    }
 
-    if (_dbg_gpio >= 0)
+    if (_dbg_gpio >= 0) {
         DbgGpio::init(_dbg_gpio);
+    }
 
     gpio_set_function(_rx_gpio, UART_FUNCSEL_NUM(_uart, _rx_gpio));
     uart_init(_uart, RailComSpec::baud);
-}
+
+} // RailCom::RailCom
+
 
 void RailCom::read()
 {
@@ -51,7 +56,9 @@ void RailCom::read()
         DbgGpio d(_dbg_gpio);
         [[maybe_unused]] volatile int i = 0;
     }
-}
+
+} // RailCom::read()
+
 
 // Split received packet into channel 1 and channel 2
 //
@@ -87,8 +94,8 @@ void RailCom::read()
 //     out channel 2 to 6 bytes, but I don't think the spec requires that.
 void RailCom::parse()
 {
-    const uint8_t* d = _dec;
-    const uint8_t* d_end = d + _pkt_len;
+    const uint8_t *d = _dec;
+    const uint8_t *d_end = d + _pkt_len;
 
     // Attempt to extract channel 1.
     //
@@ -98,10 +105,11 @@ void RailCom::parse()
     // bytes of channel 2. It is also possible we have good channel 1 data,
     // but channel 2 not there or is corrupted; we still use channel 1.
 
-    if (_ch1_msg.parse1(d, d_end))
+    if (_ch1_msg.parse1(d, d_end)) {
         _ch1_msg_cnt = 1;
-    else
+    } else {
         _ch1_msg_cnt = 0;
+    }
 
     // Attempt to extract channel 2.
     //
@@ -127,26 +135,30 @@ void RailCom::parse()
     }
 
     _parsed_all = (d == d_end);
-}
+
+} // RailCom::parse()
+
 
 // for each encoded byte:
 //   if byte decodes to 6-bit binary, print bits (bbbbbb)
 //   else if byte is special (ack, nak, bsy), print text (AK, NK, BZ)
 //   else print raw encoded hex (xx)
-char* RailCom::dump(char* buf, int buf_len) const
+char *RailCom::dump(char *buf, int buf_len) const
 {
     memset(buf, '\0', buf_len);
 
-    char* b = buf;
-    char* e = buf + buf_len;
+    char *b = buf;
+    char *e = buf + buf_len;
 
     b += snprintf(b, e - b, "R ");
 
     for (int i = 0; i < _pkt_len; i++) {
         if (_dec[i] < RailComSpec::DecId::dec_max) {
-            // encoded value represents valid data - print decoded value in binary
-            for (uint8_t m = 0x20; m != 0; m >>= 1)
+            // encoded value represents valid data - print decoded value in
+            // binary
+            for (uint8_t m = 0x20; m != 0; m >>= 1) {
                 b += snprintf(b, e - b, "%c", (_dec[i] & m) != 0 ? '1' : '0');
+            }
         } else if (_dec[i] == RailComSpec::DecId::dec_ack) {
             b += snprintf(b, e - b, "AK");
         } else if (_dec[i] == RailComSpec::DecId::dec_nak) {
@@ -159,20 +171,23 @@ char* RailCom::dump(char* buf, int buf_len) const
             // print encoded value in hex
             b += snprintf(b, e - b, "%02x", _enc[i]);
         }
-        if (i < (_pkt_len - 1))
+        if (i < (_pkt_len - 1)) {
             b += snprintf(b, e - b, " ");
+        }
     }
 
     return buf;
-}
+
+} // RailCom::dump()
+
 
 // return argument buf so it can e.g. be a printf argument
-char* RailCom::show(char* buf, int buf_len) const
+char *RailCom::show(char *buf, int buf_len) const
 {
     memset(buf, '\0', buf_len);
 
-    char* b = buf;
-    char* e = buf + buf_len;
+    char *b = buf;
+    char *e = buf + buf_len;
 
     b += snprintf(b, e - b, "R ");
 
@@ -184,7 +199,6 @@ char* RailCom::show(char* buf, int buf_len) const
     } else if (_ch1_msg_cnt == 0 && _ch2_msg_cnt == 0) {
         b += snprintf(b, e - b, "[corrupt]");
     } else {
-
         // show channel 1
         if (_ch1_msg_cnt > 0) {
             b += _ch1_msg.show(b, e - b);
@@ -193,17 +207,21 @@ char* RailCom::show(char* buf, int buf_len) const
 
         // show channel 2
         for (int i = 0; i < _ch2_msg_cnt; i++) {
-            if (i > 0 && _ch2_msg[i] == _ch2_msg[i - 1])
-                b += snprintf(b, e - b, "#"); // same as previous message
-            else
-                b += _ch2_msg[i].show(b, e - b); // different from previous message
-            if (i < (_ch2_msg_cnt - 1))
+            if (i > 0 && _ch2_msg[i] == _ch2_msg[i - 1]) {
+                // same as previous message
+                b += snprintf(b, e - b, "#");
+            } else {
+                // different from previous message
+                b += _ch2_msg[i].show(b, e - b);
+            }
+            if (i < (_ch2_msg_cnt - 1)) {
                 b += snprintf(b, e - b, " ");
+            }
         }
 
-        if (!_parsed_all)
+        if (!_parsed_all) {
             b += snprintf(b, e - b, " [junk]");
-
+        }
     }
 
     return buf;

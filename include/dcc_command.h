@@ -13,6 +13,7 @@ class DccThrottle;
 class DccCommand
 {
 public:
+
     DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc &adc);
     ~DccCommand();
 
@@ -39,7 +40,10 @@ public:
         MODE_SVC_READ_BIT,
     };
 
-    Mode mode() const { return _mode; }
+    Mode mode() const
+    {
+        return _mode;
+    }
 
     void loop();
 
@@ -52,6 +56,7 @@ public:
     void show();
 
 private:
+
     DccBitstream _bitstream;
 
     DccAdc &_adc;
@@ -90,7 +95,7 @@ private:
     DccPktSvcVerifyBit _pkt_svc_verify_bit;
     DccPktSvcVerifyCv _pkt_svc_verify_cv;
     int _verify_bit;
-    int _verify_bit_val;  // 0 or 1
+    int _verify_bit_val; // 0 or 1
     int _verify_cnt;
     uint8_t _cv_val;
     void loop_svc_read_cv();
