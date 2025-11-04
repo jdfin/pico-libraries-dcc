@@ -99,11 +99,12 @@ void RailCom::parse()
 
     // Attempt to extract channel 1.
     //
-    // It must be the first two bytes, and it must contain either an alo or
-    // ahi message. Anything else, and we try to parse as channel 2 below.
-    // It is possible no decoder sent any channel 1 data and we only have 6
-    // bytes of channel 2. It is also possible we have good channel 1 data,
-    // but channel 2 not there or is corrupted; we still use channel 1.
+    // It must be the first two bytes, and it must contain either an ALO or
+    // AHI message. Anything else, and we try to parse channel 2 starting at
+    // the first byte below.  It is possible no decoder sent any channel 1
+    // data and we only have 6 bytes of channel 2. It is also possible we have
+    // good channel 1 data, but channel 2 not there or is corrupted; we still
+    // use channel 1.
 
     if (_ch1_msg.parse1(d, d_end)) {
         _ch1_msg_cnt = 1;
@@ -113,7 +114,7 @@ void RailCom::parse()
 
     // Attempt to extract channel 2.
     //
-    // We must have exactly 6 bytes available to look at - either channel 1
+    // We must have exactly 6 bytes remaining to look at - either channel 1
     // was parsed above and we have 6 left, or we have 6 total because no
     // decoder sent channel 1. All 6 bytes must decode correctly. If channel 1
     // was corrupted, we won't get channel 2 because we'll restart here with

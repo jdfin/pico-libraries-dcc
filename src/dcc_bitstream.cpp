@@ -147,7 +147,8 @@ void DccBitstream::start(int preamble_bits, DccPkt &first)
     // Program for second bit when first bit finishes.
     // This assumes the RP2040's double-buffering of TOP and LEVEL.
     next_bit();
-}
+
+} // void DccBitstream::start(int preamble_bits, DccPkt &first)
 
 
 void DccBitstream::stop()
@@ -156,10 +157,12 @@ void DccBitstream::stop()
     // stop with output low (0% duty)
     pwm_set_chan_level(_slice, _channel, 0);
     pwm_set_chan_level(_slice, 1 - _channel, 0); // enable low
+
     // Let the pwm keep running so it gets to the end of the current bit and
     // switches to the 0% duty cycle. If the bitstream starts again, it'll be
     // disabled while it is initialized.
-}
+
+} // void DccBitstream::stop()
 
 
 void DccBitstream::send_packet(const DccPkt &pkt)
@@ -181,15 +184,16 @@ void DccBitstream::send_packet(const DccPkt &pkt)
     __dmb();
 
     pwm_set_irq_enabled(_slice, true);
-}
+
+} // void DccBitstream::send_packet(const DccPkt &pkt)
 
 
 // called from start(), then the PWM IRQ handler
 void DccBitstream::next_bit()
 {
-    // byte=-2 is the cutout,
-    // byte=-1 is the preamble,
-    // then byte=0,1,...msg_len-1 for the message bytes
+    // byte=-2 is the railcom cutout,
+    // byte=-1 is the packet preamble,
+    // then byte=0,1...msg_len-1 for the message bytes
     if (_byte == -2) {
         // doing railcom cutout
         if (_bit == 4) {
@@ -211,14 +215,10 @@ void DccBitstream::next_bit()
         }
     } else if (_byte == -1) {
         // sending preamble
-        if (_bit == 0) {
-            // end of preamble, send packet start bit
-            prog_bit(0);
-            _byte = 0;
-            _bit = 8 - 1;
-        } else if (_bit == (_preamble_bits - 1)) {
-            // The cutout just ended and we've started the first preamble bit.
-            // The first preamble bit was programmed on the previous interrupt.
+        if (_bit == (_preamble_bits - 1)) {
+            // First bit of preamble. The cutout just ended and we've started
+            // the first preamble bit. The first preamble bit was programmed
+            // on the previous interrupt.
             _railcom.read();
             // and continue preamble
             prog_bit(1);
@@ -229,7 +229,7 @@ void DccBitstream::next_bit()
             // nullptr.
             if (_current != nullptr) {
                 _railcom.parse();
-                _railcom./*dump*/ show(_log[_log_put], log_line_len);
+                _railcom.show(_log[_log_put], log_line_len);
                 if (++_log_put >= log_line_cnt) {
                     _log_put = 0;
                 }
@@ -239,25 +239,34 @@ void DccBitstream::next_bit()
                 }
             }
 #endif
-        } else {
+        } else if (_bit > 0) {
             // continue preamble
             prog_bit(1);
             _bit--;
+        } else {
+            // end of preamble, send packet start bit
+            prog_bit(0);
+            _byte = 0;
+            _bit = 7;
         }
     } else {
-        // sending message bytes
-        xassert(_byte >= 0);
-        if (_byte == 0 && _bit == (8 - 1)) {
-            // time for the first bit of the first byte of the next packet
+        xassert(0 <= _byte);
+        // _bit can be more than 7 when sending preamble, but not here
+        xassert(-1 <= _bit && _bit <= 7);
+        // sending message bytes; _byte counts 0...msg_len-1
+        if (_byte == 0 && _bit == 7) {
+            // starting first byte of the next packet
             _current = _next;
-            _next = &_pkt_idle;
+            _next = &_pkt_idle; // next call to need_packet() sees this
         }
+        xassert(_current != nullptr);
         int msg_len = _current->msg_len();
+        xassert(_byte < msg_len);
         // _bit = 7...0, then -1 means stop bit
         if (_bit == -1) {
-            // send stop bit
+            // sent a byte, send stop bit
             if ((_byte + 1) == msg_len) {
-                // end of message, send 1
+                // end of message, send message-stop bit
                 prog_bit(1);
 #if LOG_DCC
                 // _current is the message we just sent the stop bit for
@@ -267,20 +276,20 @@ void DccBitstream::next_bit()
                 }
 #endif
 #if 1 // railcom
-                // cutout first, then preamble
+                // cutout first, then message preamble
                 _byte = -2;
                 _bit = 4;
 #else // no railcom
-                _byte = -1; // preamble
+                _byte = -1; // message preamble
                 // stop bit counts as first bit of next preamble
                 // will do _preamble_bits-2...0 more
                 _bit = _preamble_bits - 2;
 #endif
             } else {
-                // more bytes in message, send 0
+                // more bytes in message, send byte-stop bit
                 prog_bit(0);
                 _byte++;
-                _bit = 8 - 1;
+                _bit = 7;
             }
         } else {
             int b = (_current->data(_byte) >> _bit) & 1;
@@ -288,7 +297,8 @@ void DccBitstream::next_bit()
             _bit--;
         }
     }
-}
+
+} // void DccBitstream::next_bit()
 
 
 // interrupt handler

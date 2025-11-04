@@ -75,61 +75,87 @@ bool RailComMsg::parse2(const uint8_t *&d, const uint8_t *d_end)
         if (pkt_id == RailComSpec::PktId::pkt_pom) {
             // 12 bit (2 byte) message
             if (len >= 2) {
-                id = MsgId::pom;
-                pom.val = ((b0 << 6) | d[1]) & 0xff;
-                d += 2;
-                return true;
+                uint8_t b1 = d[1];
+                if (b1 < RailComSpec::DecId::dec_max) {
+                    id = MsgId::pom;
+                    pom.val = ((b0 << 6) | b1) & 0xff;
+                    d += 2;
+                    return true;
+                }
             }
             // it looks like ahi and alo are allowed in either channel
         } else if (pkt_id == RailComSpec::PktId::pkt_ahi) {
             // 12 bit (2 byte) message
             if (len >= 2) {
-                id = MsgId::ahi;
-                ahi.ahi = ((b0 << 6) | d[1]) & 0xff;
-                d += 2;
-                return true;
+                uint8_t b1 = d[1];
+                if (b1 < RailComSpec::DecId::dec_max) {
+                    id = MsgId::ahi;
+                    ahi.ahi = ((b0 << 6) | b1) & 0xff;
+                    d += 2;
+                    return true;
+                }
             }
         } else if (pkt_id == RailComSpec::PktId::pkt_alo) {
             // 12 bit (2 byte) message
             if (len >= 2) {
-                id = MsgId::alo;
-                alo.alo = ((b0 << 6) | d[1]) & 0xff;
-                d += 2;
-                return true;
+                uint8_t b1 = d[1];
+                if (b1 < RailComSpec::DecId::dec_max) {
+                    id = MsgId::alo;
+                    alo.alo = ((b0 << 6) | b1) & 0xff;
+                    d += 2;
+                    return true;
+                }
             }
         } else if (pkt_id == RailComSpec::PktId::pkt_ext) {
             // 18 bit (3 byte) message
             if (len >= 3) {
-                id = MsgId::ext;
-                ext.typ = ((b0 << 4) & 0x30) | ((d[1] >> 2) & 0x0f);
-                ext.pos = ((d[1] << 6) & 0xc0) | d[2];
-                d += 3;
-                return true;
+                uint8_t b1 = d[1];
+                uint8_t b2 = d[2];
+                if (b1 < RailComSpec::DecId::dec_max && b2 < RailComSpec::DecId::dec_max) {
+                    id = MsgId::ext;
+                    ext.typ = ((b0 << 4) & 0x30) | ((b1 >> 2) & 0x0f);
+                    ext.pos = ((b1 << 6) & 0xc0) | b2;
+                    d += 3;
+                    return true;
+                }
             }
         } else if (pkt_id == RailComSpec::PktId::pkt_dyn) {
             // 18 bit (3 byte) message
             if (len >= 3) {
-                id = MsgId::dyn;
-                dyn.val = ((b0 << 6) | d[1]) & 0xff;
-                dyn.id = RailComSpec::DynId(d[2]);
-                d += 3;
-                return true;
+                uint8_t b1 = d[1];
+                uint8_t b2 = d[2];
+                if (b1 < RailComSpec::DecId::dec_max && b2 < RailComSpec::DecId::dec_max) {
+                    id = MsgId::dyn;
+                    dyn.val = ((b0 << 6) | b1) & 0xff;
+                    dyn.id = RailComSpec::DynId(b2);
+                    d += 3;
+                    return true;
+                }
             }
         } else if ((pkt_id & 0x0c) == RailComSpec::PktId::pkt_xpom) {
             // xpom 8, 9, 10, 11 (0x08, 0x09, 0x0a, 0x0b)
             // 36 bit (6 byte) message
             if (len >= 6) {
-                // [ d0 ] [ d1 ] [ d2 ] [ d3 ] [ d4 ] [ d5 ]
-                // IIII00 000000 111111 112222 222233 333333
-                //     [ val0  ] [ val1  ][ val2  ][ val3  ]
-                id = MsgId::xpom;
-                xpom.ss = pkt_id & 0x03;
-                xpom.val[0] = (b0 << 6) | d[1];
-                xpom.val[1] = (d[2] << 2) | (d[3] >> 4);
-                xpom.val[2] = (d[3] << 4) | (d[4] >> 2);
-                xpom.val[3] = (d[4] << 6) | d[5];
-                d += 6;
-                return true;
+                uint8_t b1 = d[1];
+                uint8_t b2 = d[2];
+                uint8_t b3 = d[3];
+                uint8_t b4 = d[4];
+                uint8_t b5 = d[5];
+                if (b1 < RailComSpec::DecId::dec_max && b2 < RailComSpec::DecId::dec_max &&
+                    b3 < RailComSpec::DecId::dec_max && b4 < RailComSpec::DecId::dec_max &&
+                    b5 < RailComSpec::DecId::dec_max) {
+                    // [ d0 ] [ d1 ] [ d2 ] [ d3 ] [ d4 ] [ d5 ]
+                    // IIII00 000000 111111 112222 222233 333333
+                    //     [ val0  ] [ val1  ][ val2  ][ val3  ]
+                    id = MsgId::xpom;
+                    xpom.ss = pkt_id & 0x03;
+                    xpom.val[0] = (b0 << 6) | b1;
+                    xpom.val[1] = (b2 << 2) | (b3 >> 4);
+                    xpom.val[2] = (b3 << 4) | (b4 >> 2);
+                    xpom.val[3] = (b4 << 6) | b5;
+                    d += 6;
+                    return true;
+                }
             }
         }
     }
