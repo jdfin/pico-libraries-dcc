@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <list>
 
+#include "buf_log.h"
 #include "dcc_adc.h"
 #include "dcc_bitstream.h"
 #include "dcc_pkt.h"
@@ -163,31 +164,59 @@ void DccCommand::loop()
         _adc.loop();
         loop_svc_read_bit();
     }
-    const char *p = _bitstream.get_log_line();
+    const char *p = BufLog::read_line_get();
     if (p != nullptr) {
-        // DCC packets start with "D ", RailCom packets start with "R ".
-        // They should alternate. Print the DCC packet and keep track of how
-        // many columns were printed, then tab over for the RailCom packet.
-        const int dcc_cols = 16;
+        // DCC messages start with "D ", RailCom messages start with "R ", and
+        // throttle messages with "T "; they should go in that order. Print
+        // the DCC message and keep track of how many columns were printed,
+        // tab over for the RailCom message, then do the same for the throttle
+        // message.
+        constexpr int dcc_cols = 12;
+        constexpr int rc_cols = 30;
+
+        static bool new_line = false;
         static int dcc_last = 0;
+        static int rc_last = 0;
+
         if (p[0] == 'D' && p[1] == ' ') {
-            // DCC packet
+            // DCC message
             dcc_last = printf("%s", p + 2); // p+2 to skip "D "
+            new_line = false;
         } else if (p[0] == 'R' && p[1] == ' ') {
-            // RailCom packet - tab over, then print
+            // RailCom message - tab over, then print
             for (int i = dcc_last; i < dcc_cols; i++) {
                 printf(" ");
             }
-            printf("%s\n", p + 2); // p+2 to skip "R "
             dcc_last = 0;
+            rc_last = printf("%s", p + 2); // p+2 to skip "R "
+            new_line = false;
+        } else if (p[0] == 'T' && p[1] == ' ') {
+            // Throttle message - tab over, then print
+            if (rc_last > 0) {
+                for (int i = rc_last; i < rc_cols; i++) {
+                    printf(" ");
+                }
+                rc_last = 0;
+            } else if (dcc_last > 0) {
+                for (int i = dcc_last; i < dcc_cols; i++) {
+                    printf(" ");
+                }
+                dcc_last = 0;
+            }
+            printf("%s\n", p + 2); // p+2 to skip "T "
+            new_line = true;
         } else {
             // Unknown - just print it, always on a new line
-            if (dcc_last > 0) {
+            if (!new_line) {
                 printf("\n");
+                new_line = true;
             }
             printf("{%s}\n", p);
             dcc_last = 0;
+            rc_last = 0;
+            new_line = true;
         }
+        BufLog::read_line_put();
     }
 }
 
@@ -195,7 +224,8 @@ void DccCommand::loop_ops()
 {
     if (_bitstream.need_packet()) {
         if (_next_throttle != _throttles.end()) {
-            _bitstream.send_packet((*_next_throttle)->next_packet());
+            _bitstream.send_packet((*_next_throttle)->next_packet(),
+                                   *_next_throttle);
             _next_throttle++;
             if (_next_throttle == _throttles.end()) {
                 _next_throttle = _throttles.begin();

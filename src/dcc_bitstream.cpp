@@ -4,8 +4,10 @@
 #include <cstdint>
 #include <cstdio>
 
+#include "buf_log.h"
 #include "dbg_gpio.h" // misc/include/
 #include "dcc_pkt.h"
+#include "dcc_throttle.h"
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "hardware/irq.h"
@@ -52,22 +54,23 @@
 // datasheet). It does not matter which is channel A and which is channel B.
 
 
-DccBitstream::DccBitstream(int sig_gpio, int pwr_gpio, uart_inst_t *uart, int rc_gpio) :
+DccBitstream::DccBitstream(int sig_gpio, int pwr_gpio, uart_inst_t *uart,
+                           int rc_gpio) :
     _railcom(uart, rc_gpio),
     _pwr_gpio(pwr_gpio),
     _pkt_idle(),
     _pkt_reset(),
-    _pkt_a(),
-    _pkt_b(),
-    _current(nullptr),
-    _next(&_pkt_idle),
+    _pkt2_idle(_pkt_idle),
+    _pkt2_reset(_pkt_reset),
+    _pkt2_a(),
+    _pkt2_b(),
+    _current2(nullptr),
+    _next2(&_pkt2_idle),
     _preamble_bits(DccPkt::ops_preamble_bits),
     _slice(pwm_gpio_to_slice_num(sig_gpio)),
     _channel(pwm_gpio_to_channel(sig_gpio)),
     _byte(INT_MAX), // set in start_*()
-    _bit(INT_MAX),  // set in start_*()
-    _log_put(0),
-    _log_get(0)
+    _bit(INT_MAX)   // set in start_*()
 {
     // DbgGpio::init({0});
 
@@ -131,8 +134,10 @@ void DccBitstream::start(int preamble_bits, DccPkt &first)
     //          start_ops()      or     start_svc()
     xassert(&first == &_pkt_idle || &first == &_pkt_reset);
 
-    _current = nullptr;
-    _next = &first;
+    _current2 = nullptr;
+    _pkt2_a.set_throttle(nullptr);
+    _pkt2_a.set_pkt(first); // copy
+    _next2 = &_pkt2_a;
 
     // first packet starts with preamble (no cutout)
     _byte = -1;
@@ -165,27 +170,29 @@ void DccBitstream::stop()
 } // void DccBitstream::stop()
 
 
-void DccBitstream::send_packet(const DccPkt &pkt)
+void DccBitstream::send_packet(const DccPkt &pkt, DccThrottle *throttle)
 {
     pwm_set_irq_enabled(_slice, false);
 
-    // make sure the irq is really disabled before changing _next and _pkt_a/b
+    // make sure the irq is really disabled before changing _next2 and _pkt2_a/b
     __dmb();
 
-    if (_current == &_pkt_a) {
-        _pkt_b = pkt; // copy packet (only 12 bytes)
-        _next = &_pkt_b;
+    if (_current2 == &_pkt2_a || _current2 == nullptr) {
+        _pkt2_b.set_throttle(throttle);
+        _pkt2_b.set_pkt(pkt); // copy packet (only 12 bytes)
+        _next2 = &_pkt2_b;
     } else {
-        _pkt_a = pkt; // copy
-        _next = &_pkt_a;
+        _pkt2_a.set_throttle(throttle);
+        _pkt2_a.set_pkt(pkt); // copy
+        _next2 = &_pkt2_a;
     }
 
-    // make sure _next and _pkt_a/b are in memory before enabling the irq
+    // make sure _next2 and _pkt2_a/b are in memory before enabling the irq
     __dmb();
 
     pwm_set_irq_enabled(_slice, true);
 
-} // void DccBitstream::send_packet(const DccPkt &pkt)
+} // void DccBitstream::send_packet(const DccPkt &pkt, DccThrottle *throttle)
 
 
 // called from start(), then the PWM IRQ handler
@@ -224,18 +231,43 @@ void DccBitstream::next_bit()
             prog_bit(1);
             _bit--;
 #if LOG_RAILCOM
-            // On the first call from start(), _current is nullptr.
-            // Thereafter, _current is always set from _next, so is never
-            // nullptr.
-            if (_current != nullptr) {
-                _railcom.parse();
-                _railcom.show(_log[_log_put], log_line_len);
-                if (++_log_put >= log_line_cnt) {
-                    _log_put = 0;
+            // On the first call from start(), _current2 is nullptr.
+            // Thereafter, _current2 is always set from _next2, so is never
+            // nullptr. At this point, it still points to the packet just
+            // before the cutout (it changes to the next packet at the end of
+            // the preamble).
+            if (_current2 != nullptr) {
+                char *b;
+
+                b = BufLog::write_line_get();
+                if (b != nullptr) {
+                    _current2->show(b, BufLog::line_len);
+                    BufLog::write_line_put();
                 }
-                // _current still points to the packet just before the cutout.
-                if (_current->get_type() == DccPkt::OpsRead1Cv) {
-                    // XXX
+
+                _railcom.parse();
+
+#if 0
+                b = BufLog::write_line_get();
+                if (b != nullptr) {
+                    _railcom.show(b, BufLog::line_len);
+                    BufLog::write_line_put();
+                }
+#endif
+                DccThrottle *throttle = _current2->get_throttle();
+#if 0
+                b = BufLog::write_line_get();
+                if (b != nullptr) {
+                    memset(b, '\0', BufLog::line_len);
+                    b += snprintf(b, BufLog::line_len, "T throttle %p",
+                                  throttle);
+                    BufLog::write_line_put();
+                }
+#endif
+                if (throttle != nullptr) {
+                    const RailComMsg *msg;
+                    int msg_cnt = _railcom.get_ch2_msgs(msg);
+                    throttle->railcom(msg, msg_cnt);
                 }
             }
 #endif
@@ -256,11 +288,11 @@ void DccBitstream::next_bit()
         // sending message bytes; _byte counts 0...msg_len-1
         if (_byte == 0 && _bit == 7) {
             // starting first byte of the next packet
-            _current = _next;
-            _next = &_pkt_idle; // next call to need_packet() sees this
+            _current2 = _next2;
+            _next2 = &_pkt2_idle; // next call to need_packet() sees this
         }
-        xassert(_current != nullptr);
-        int msg_len = _current->msg_len();
+        xassert(_current2 != nullptr);
+        int msg_len = _current2->len();
         xassert(_byte < msg_len);
         // _bit = 7...0, then -1 means stop bit
         if (_bit == -1) {
@@ -268,13 +300,6 @@ void DccBitstream::next_bit()
             if ((_byte + 1) == msg_len) {
                 // end of message, send message-stop bit
                 prog_bit(1);
-#if LOG_DCC
-                // _current is the message we just sent the stop bit for
-                _current->show(_log[_log_put], log_line_len);
-                if (++_log_put >= log_line_cnt) {
-                    _log_put = 0;
-                }
-#endif
 #if 1 // railcom
                 // cutout first, then message preamble
                 _byte = -2;
@@ -292,7 +317,7 @@ void DccBitstream::next_bit()
                 _bit = 7;
             }
         } else {
-            int b = (_current->data(_byte) >> _bit) & 1;
+            int b = (_current2->data(_byte) >> _bit) & 1;
             prog_bit(b);
             _bit--;
         }

@@ -4,6 +4,8 @@
 
 #include "dcc_pkt.h"
 
+class RailComMsg;
+
 class DccThrottle
 {
 
@@ -28,6 +30,8 @@ public:
     void write_bit(int cv_num, int bit_num, int bit_val);
 
     DccPkt next_packet();
+
+    void railcom(const RailComMsg *msg, int msg_cnt);
 
     // reset packet sequence to start (typically for debug purposes)
     void restart()

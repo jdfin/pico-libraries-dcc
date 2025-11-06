@@ -32,6 +32,11 @@ public:
 
     char *show(char *buf, int buf_len) const; // pretty
 
+    int get_ch2_msgs(const RailComMsg *&msgs) {
+        msgs = _ch2_msg;
+        return _ch2_msg_cnt;
+    }
+
 private:
 
     uart_inst_t *_uart;

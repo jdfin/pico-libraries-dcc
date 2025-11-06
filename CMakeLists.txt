@@ -10,6 +10,7 @@ target_sources(dcc INTERFACE
     ${CMAKE_CURRENT_LIST_DIR}/src/railcom.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/railcom_msg.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/railcom_spec.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/dcc_pkt2.cpp
 )
 
 target_include_directories(dcc INTERFACE 

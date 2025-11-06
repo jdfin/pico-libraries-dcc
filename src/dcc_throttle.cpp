@@ -3,7 +3,9 @@
 #include <cstdint>
 #include <cstdio>
 
+#include "buf_log.h"
 #include "dcc_pkt.h"
+#include "railcom_msg.h"
 #include "xassert.h"
 
 DccThrottle::DccThrottle(int address) :
@@ -282,6 +284,24 @@ DccPkt DccThrottle::next_packet()
 #endif
     } else {
         __builtin_unreachable();
+    }
+}
+
+// This is called (at interrupt level) if any railcom channel2 messages are received in the
+// cutout following a DCC message from this throttle.
+void DccThrottle::railcom(const RailComMsg *msg, int msg_cnt)
+{
+    char *b = BufLog::write_line_get();
+    if (b != nullptr) {
+        char *e = b + BufLog::line_len;
+        memset(b, '\0', BufLog::line_len);
+        b += snprintf(b, e - b, "T throttle %p:", this);
+        for (int i = 0; i < msg_cnt; i++) {
+            b += snprintf(b, e - b, " ");
+            b += msg->show(b, e - b);
+            msg++;
+        }
+        BufLog::write_line_put();
     }
 }
 

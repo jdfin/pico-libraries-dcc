@@ -1,6 +1,8 @@
 #pragma once
 
+#include "buf_log.h"
 #include "dcc_pkt.h"
+#include "dcc_pkt2.h"
 #include "dcc_spec.h"
 #include "hardware/pwm.h"
 #include "hardware/uart.h"
@@ -12,7 +14,8 @@ class DccBitstream
 
 public:
 
-    DccBitstream(int sig_gpio, int pwr_gpio, uart_inst_t *uart = nullptr, int rc_gpio = -1);
+    DccBitstream(int sig_gpio, int pwr_gpio, uart_inst_t *uart = nullptr,
+                 int rc_gpio = -1);
     ~DccBitstream();
 
     void start_ops();
@@ -21,26 +24,14 @@ public:
 
     bool need_packet()
     {
-        return (_next == &_pkt_idle);
+        return (_next2 == &_pkt2_idle);
     }
 
-    void send_packet(const DccPkt &pkt);
+    void send_packet(const DccPkt &pkt, DccThrottle *throttle = nullptr);
 
     void send_reset()
     {
         send_packet(_pkt_reset);
-    }
-
-    const char *get_log_line()
-    {
-        if (_log_get == _log_put) {
-            return nullptr;
-        }
-        const char *p = _log[_log_get];
-        if (++_log_get >= log_line_cnt) {
-            _log_get = 0;
-        }
-        return p;
     }
 
 private:
@@ -51,23 +42,25 @@ private:
 
     DccPktIdle _pkt_idle;
     DccPktReset _pkt_reset;
-    DccPkt _pkt_a;
-    DccPkt _pkt_b;
+    DccPkt2 _pkt2_idle;
+    DccPkt2 _pkt2_reset;
+    DccPkt2 _pkt2_a;
+    DccPkt2 _pkt2_b;
 
-    // ISR sends packet at _current. When it is done:
-    //   _current = _next (one of _pkt_a, _pkt_b, _pkt_idle, _pkt_reset)
-    //   _next = _pkt_idle
-    //   start packet at _current with _preamble_bits
+    // ISR sends packet at _current2. When packet is done:
+    //   _current2 = _next2 (one of _pkt2_a, _pkt2_b, _pkt2_idle, _pkt2_reset)
+    //   _next2 = &_pkt2_idle
+    //   start packet at _current2 with _preamble_bits
 
-    DccPkt *_current;
-    DccPkt *_next; // never nullptr; &_pkt_idle if nothing to send
+    DccPkt2 *_current2;
+    DccPkt2 *_next2; // never nullptr; &_pkt2_idle if nothing to send
 
     int _preamble_bits;
 
     uint _slice;   // uint to match pico-sdk
     uint _channel; // uint to match pico-sdk
 
-    int _byte; // -1 for preamble, then index in _current
+    int _byte; // -1 for preamble, then index in _current2
     int _bit;  // counts down bit in preamble or _byte
 
     void start(int preamble_bits, DccPkt &first);
@@ -91,12 +84,6 @@ private:
     }
 
     void next_bit();
-
-    static const int log_line_len = 80;
-    static const int log_line_cnt = 16;
-    char _log[log_line_cnt][log_line_len];
-    int _log_put;
-    int _log_get;
 
     static void pwm_handler(void *arg);
 
