@@ -11,22 +11,21 @@
 #include "xassert.h"
 
 
-RailCom::RailCom(uart_inst_t *uart, int rx_gpio, int dbg_gpio) :
+int RailCom::dbg_read __attribute((weak)) = -1;
+int RailCom::dbg_junk __attribute((weak)) = -1;
+int RailCom::dbg_short __attribute((weak)) = -1;
+
+
+RailCom::RailCom(uart_inst_t *uart, int rx_gpio) :
     _uart(uart),
     _rx_gpio(rx_gpio),
-    _dbg_gpio(dbg_gpio),
     _pkt_len(0),
     _ch1_msg_cnt(0),
     _ch2_msg_cnt(0),
     _parsed_all(false)
 {
-    if (_uart == nullptr || _rx_gpio < 0) {
+    if (_uart == nullptr || _rx_gpio < 0)
         return;
-    }
-
-    if (_dbg_gpio >= 0) {
-        DbgGpio::init(_dbg_gpio);
-    }
 
     gpio_set_function(_rx_gpio, UART_FUNCSEL_NUM(_uart, _rx_gpio));
     uart_init(_uart, RailComSpec::baud);
@@ -34,11 +33,17 @@ RailCom::RailCom(uart_inst_t *uart, int rx_gpio, int dbg_gpio) :
 } // RailCom::RailCom
 
 
+void RailCom::dbg_init()
+{
+    DbgGpio::init(dbg_read);
+    DbgGpio::init(dbg_junk);
+    DbgGpio::init(dbg_short);
+}
+
+
 void RailCom::read()
 {
-#if 0
-    DbgGpio d(_dbg_gpio); // scope trigger
-#endif
+    DbgGpio d(dbg_read);
 
     _pkt_len = 0;
     _ch1_msg_cnt = 0;
@@ -48,23 +53,19 @@ void RailCom::read()
     for (_pkt_len = 0; _pkt_len < pkt_max && uart_is_readable(_uart); _pkt_len++) {
         _enc[_pkt_len] = uart_getc(_uart);
         _dec[_pkt_len] = RailComSpec::decode[_enc[_pkt_len]];
-#if 0
-        // trigger on invalid data received
-        if (_dec[_pkt_len] == RailComSpec::DecId::dec_inv) {
-            DbgGpio d(_dbg_gpio); // scope trigger
+        // debug: trigger on invalid data received
+        if (dbg_junk >= 0 && _dec[_pkt_len] == RailComSpec::DecId::dec_inv) {
+            DbgGpio d(dbg_junk);
             // XXX this seems to be needed to force construction of DbgGpio
             [[maybe_unused]] volatile int i = 0;
         }
-#endif
     } // for (_pkt_len...)
 
-#if 0
-    // trigger on not receiving all bytes
-    if (_pkt_len != pkt_max) {
-        DbgGpio d(_dbg_gpio);
+    // debug: trigger on not receiving all bytes
+    if (dbg_short >= 0 && _pkt_len != pkt_max) {
+        DbgGpio d(dbg_short);
         [[maybe_unused]] volatile int i = 0;
     }
-#endif
 
 } // RailCom::read()
 
@@ -115,11 +116,10 @@ void RailCom::parse()
     // good channel 1 data, but channel 2 not there or is corrupted; we still
     // use channel 1.
 
-    if (_ch1_msg.parse1(d, d_end)) {
+    if (_ch1_msg.parse1(d, d_end))
         _ch1_msg_cnt = 1;
-    } else {
+    else
         _ch1_msg_cnt = 0;
-    }
 
     // Attempt to extract channel 2.
     //
@@ -160,15 +160,11 @@ char *RailCom::dump(char *buf, int buf_len) const
     char *b = buf;
     char *e = buf + buf_len;
 
-    b += snprintf(b, e - b, "R ");
-
     for (int i = 0; i < _pkt_len; i++) {
         if (_dec[i] < RailComSpec::DecId::dec_max) {
-            // encoded value represents valid data - print decoded value in
-            // binary
-            for (uint8_t m = 0x20; m != 0; m >>= 1) {
+            // encoded value is valid data - print decoded value in binary
+            for (uint8_t m = 0x20; m != 0; m >>= 1)
                 b += snprintf(b, e - b, "%c", (_dec[i] & m) != 0 ? '1' : '0');
-            }
         } else if (_dec[i] == RailComSpec::DecId::dec_ack) {
             b += snprintf(b, e - b, "AK");
         } else if (_dec[i] == RailComSpec::DecId::dec_nak) {
@@ -181,9 +177,8 @@ char *RailCom::dump(char *buf, int buf_len) const
             // print encoded value in hex
             b += snprintf(b, e - b, "%02x", _enc[i]);
         }
-        if (i < (_pkt_len - 1)) {
+        if (i < (_pkt_len - 1))
             b += snprintf(b, e - b, " ");
-        }
     }
 
     return buf;
@@ -199,8 +194,6 @@ char *RailCom::show(char *buf, int buf_len) const
     char *b = buf;
     char *e = buf + buf_len;
 
-    b += snprintf(b, e - b, "R ");
-
     // it is expected that parse() has been called before this
     // XXX Enforce!
 
@@ -214,7 +207,6 @@ char *RailCom::show(char *buf, int buf_len) const
             b += _ch1_msg.show(b, e - b);
             b += snprintf(b, e - b, " ");
         }
-
         // show channel 2
         for (int i = 0; i < _ch2_msg_cnt; i++) {
             if (i > 0 && _ch2_msg[i] == _ch2_msg[i - 1]) {
@@ -224,14 +216,12 @@ char *RailCom::show(char *buf, int buf_len) const
                 // different from previous message
                 b += _ch2_msg[i].show(b, e - b);
             }
-            if (i < (_ch2_msg_cnt - 1)) {
+            if (i < (_ch2_msg_cnt - 1))
                 b += snprintf(b, e - b, " ");
-            }
         }
-
-        if (!_parsed_all) {
-            b += snprintf(b, e - b, " [junk]");
-        }
+        // anything unparsable at the end?
+        if (!_parsed_all)
+            b += snprintf(b, e - b, " [+junk]");
     }
 
     return buf;

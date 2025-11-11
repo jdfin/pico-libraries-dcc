@@ -1,8 +1,7 @@
 #pragma once
 
 #include <cstdint>
-
-#undef INCLUDE_ADC_LOG
+#include "dbg_gpio.h"
 
 class DccAdc
 {
@@ -19,17 +18,20 @@ public:
     uint16_t short_ma() const;
     uint16_t long_ma() const;
 
-    static constexpr bool logging()
+    bool logging() const
     {
-#ifdef INCLUDE_ADC_LOG
-        return true;
-#else
-        return false;
-#endif
+        return _log != nullptr;
     }
 
+    void log_init(int samples = sample_rate);
     void log_reset();
-    void log_show();
+    void log_show() const;
+
+    void dbg_loop(int dbg_loop_gpio)
+    {
+        _dbg_loop_gpio = dbg_loop_gpio;
+        DbgGpio::init(_dbg_loop_gpio);
+    }
 
 private:
 
@@ -70,7 +72,8 @@ private:
     static const uint32_t clock_rate = 48000000;
     static const uint32_t sample_rate = 10000; // 10 KHz = 100 usec per sample
 
-    static const int avg_max = sample_rate / 60; // 1 cycle of 60 Hz noise (166 for 10 KHz)
+    static const int avg_max =
+        sample_rate / 60; // 1 cycle of 60 Hz noise (166 for 10 KHz)
     uint16_t _avg[avg_max];
     int _avg_idx;
 
@@ -80,10 +83,10 @@ private:
 
     int _err_cnt;
 
-#ifdef INCLUDE_ADC_LOG
-    static const int log_max = 1 * sample_rate; // 1 sec
-    uint16_t _log[log_max];
+    int _log_max;
     int _log_idx;
-#endif
+    uint16_t *_log;
+
+    int _dbg_loop_gpio;
 
 }; // class DccAdc

@@ -6,6 +6,7 @@
 
 #include "buf_log.h"
 #include "dcc_pkt.h"
+#include "hardware/timer.h"
 #include "railcom_msg.h"
 #include "xassert.h"
 
@@ -15,23 +16,23 @@ DccThrottle::DccThrottle(int address) :
     _pkt_func_5(address),
     _pkt_func_9(address),
     _pkt_func_13(address),
-#if INCLUDE_DCC_FUNC_21
+#if (DCC_FUNC_MAX >= 21)
     _pkt_func_21(address),
-#if INCLUDE_DCC_FUNC_29
+#endif
+#if (DCC_FUNC_MAX >= 29)
     _pkt_func_29(address),
-#if INCLUDE_DCC_FUNC_37
+#endif
+#if (DCC_FUNC_MAX >= 37)
     _pkt_func_37(address),
-#if INCLUDE_DCC_FUNC_45
+#endif
+#if (DCC_FUNC_MAX >= 45)
     _pkt_func_45(address),
-#if INCLUDE_DCC_FUNC_53
+#endif
+#if (DCC_FUNC_MAX >= 53)
     _pkt_func_53(address),
-#if INCLUDE_DCC_FUNC_61
+#endif
+#if (DCC_FUNC_MAX >= 61)
     _pkt_func_61(address),
-#endif
-#endif
-#endif
-#endif
-#endif
 #endif
     _seq(0),
     _pkt_last(nullptr),
@@ -40,7 +41,11 @@ DccThrottle::DccThrottle(int address) :
     _pkt_write_cv(address),
     _write_cv_cnt(0),
     _pkt_write_bit(address),
-    _write_bit_cnt(0)
+    _write_bit_cnt(0),
+    _ops_cv_done(false),
+    _ops_cv_val(0),
+    _speed(0),
+    _speed_us(UINT64_MAX)
 {
 }
 
@@ -60,23 +65,23 @@ void DccThrottle::set_address(int address)
     _pkt_func_5.set_address(address);
     _pkt_func_9.set_address(address);
     _pkt_func_13.set_address(address);
-#if INCLUDE_DCC_FUNC_21
+#if (DCC_FUNC_MAX >= 21)
     _pkt_func_21.set_address(address);
-#if INCLUDE_DCC_FUNC_29
+#endif
+#if (DCC_FUNC_MAX >= 29)
     _pkt_func_29.set_address(address);
-#if INCLUDE_DCC_FUNC_37
+#endif
+#if (DCC_FUNC_MAX >= 37)
     _pkt_func_37.set_address(address);
-#if INCLUDE_DCC_FUNC_45
+#endif
+#if (DCC_FUNC_MAX >= 45)
     _pkt_func_45.set_address(address);
-#if INCLUDE_DCC_FUNC_53
+#endif
+#if (DCC_FUNC_MAX >= 53)
     _pkt_func_53.set_address(address);
-#if INCLUDE_DCC_FUNC_61
+#endif
+#if (DCC_FUNC_MAX >= 61)
     _pkt_func_61.set_address(address);
-#endif
-#endif
-#endif
-#endif
-#endif
 #endif
     _seq = 0;
     _pkt_write_cv.set_address(address);
@@ -106,29 +111,29 @@ bool DccThrottle::get_function(int num) const
         return _pkt_func_9.get_f(num);
     } else if (num <= 20) {
         return _pkt_func_13.get_f(num);
-#if INCLUDE_DCC_FUNC_21
+#if (DCC_FUNC_MAX >= 21)
     } else if (num <= 28) {
         return _pkt_func_21.get_f(num);
-#if INCLUDE_DCC_FUNC_29
+#endif
+#if (DCC_FUNC_MAX >= 29)
     } else if (num <= 36) {
         return _pkt_func_29.get_f(num);
-#if INCLUDE_DCC_FUNC_37
+#endif
+#if (DCC_FUNC_MAX >= 37)
     } else if (num <= 44) {
         return _pkt_func_37.get_f(num);
-#if INCLUDE_DCC_FUNC_45
+#endif
+#if (DCC_FUNC_MAX >= 45)
     } else if (num <= 52) {
         return _pkt_func_45.get_f(num);
-#if INCLUDE_DCC_FUNC_53
+#endif
+#if (DCC_FUNC_MAX >= 53)
     } else if (num <= 60) {
         return _pkt_func_53.get_f(num);
-#if INCLUDE_DCC_FUNC_61
+#endif
+#if (DCC_FUNC_MAX >= 61)
     } else if (num <= 68) {
         return _pkt_func_61.get_f(num);
-#endif
-#endif
-#endif
-#endif
-#endif
 #endif
     } else {
         xassert(false);
@@ -152,35 +157,35 @@ void DccThrottle::set_function(int num, bool on)
     } else if (num <= 20) {
         _pkt_func_13.set_f(num, on);
         _seq = 7;
-#if INCLUDE_DCC_FUNC_21
+#if (DCC_FUNC_MAX >= 21)
     } else if (num <= 28) {
         _pkt_func_21.set_f(num, on);
         _seq = 9;
-#if INCLUDE_DCC_FUNC_29
+#endif
+#if (DCC_FUNC_MAX >= 29)
     } else if (num <= 36) {
         _pkt_func_29.set_f(num, on);
         _seq = 11;
-#if INCLUDE_DCC_FUNC_37
+#endif
+#if (DCC_FUNC_MAX >= 37)
     } else if (num <= 44) {
         _pkt_func_37.set_f(num, on);
         _seq = 13;
-#if INCLUDE_DCC_FUNC_45
+#endif
+#if (DCC_FUNC_MAX >= 45)
     } else if (num <= 52) {
         _pkt_func_45.set_f(num, on);
         _seq = 15;
-#if INCLUDE_DCC_FUNC_53
+#endif
+#if (DCC_FUNC_MAX >= 53)
     } else if (num <= 60) {
         _pkt_func_53.set_f(num, on);
         _seq = 17;
-#if INCLUDE_DCC_FUNC_61
+#endif
+#if (DCC_FUNC_MAX >= 61)
     } else if (num <= 68) {
         _pkt_func_61.set_f(num, on);
         _seq = 19;
-#endif
-#endif
-#endif
-#endif
-#endif
 #endif
     } else {
         xassert(false);
@@ -192,27 +197,33 @@ void DccThrottle::set_function(int num, bool on)
 void DccThrottle::read_cv(int cv_num)
 {
     _pkt_read_cv.set_cv(cv_num);
+    _ops_cv_done = false;
     _read_cv_cnt = read_cv_send_cnt;
-}
-
-void DccThrottle::read_bit(int /*cv_num*/, int /*bit_num*/)
-{
-#if 0
-    _pkt_read_bit.set_cv_bit(cv_num, bit_num);
-    _read_bit_cnt = read_bit_send_cnt;
-#endif
 }
 
 void DccThrottle::write_cv(int cv_num, uint8_t cv_val)
 {
     _pkt_write_cv.set_cv(cv_num, cv_val);
+    _ops_cv_done = false;
     _write_cv_cnt = write_cv_send_cnt;
 }
 
 void DccThrottle::write_bit(int cv_num, int bit_num, int bit_val)
 {
     _pkt_write_bit.set_cv_bit(cv_num, bit_num, bit_val);
+    _ops_cv_done = false;
     _write_bit_cnt = write_bit_send_cnt;
+}
+
+bool DccThrottle::ops_done(bool &result, uint8_t &value)
+{
+    if (!_ops_cv_done)
+        return false;
+
+    result = true;
+    value = _ops_cv_val;
+
+    return true;
 }
 
 //  0. Speed     1. F0-F4
@@ -267,35 +278,35 @@ DccPkt DccThrottle::next_packet()
     } else if (seq == 7) {
         _pkt_last = &_pkt_func_13;
         return _pkt_func_13;
-#if INCLUDE_DCC_FUNC_21
+#if (DCC_FUNC_MAX >= 21)
     } else if (seq == 9) {
         _pkt_last = &_pkt_func_21;
         return _pkt_func_21;
-#if INCLUDE_DCC_FUNC_29
+#endif
+#if (DCC_FUNC_MAX >= 29)
     } else if (seq == 11) {
         _pkt_last = &_pkt_func_29;
         return _pkt_func_29;
-#if INCLUDE_DCC_FUNC_37
+#endif
+#if (DCC_FUNC_MAX >= 37)
     } else if (seq == 13) {
         _pkt_last = &_pkt_func_37;
         return _pkt_func_37;
-#if INCLUDE_DCC_FUNC_45
+#endif
+#if (DCC_FUNC_MAX >= 45)
     } else if (seq == 15) {
         _pkt_last = &_pkt_func_45;
         return _pkt_func_45;
-#if INCLUDE_DCC_FUNC_53
+#endif
+#if (DCC_FUNC_MAX >= 53)
     } else if (seq == 17) {
         _pkt_last = &_pkt_func_53;
         return _pkt_func_53;
-#if INCLUDE_DCC_FUNC_61
+#endif
+#if (DCC_FUNC_MAX >= 61)
     } else if (seq == 19) {
         _pkt_last = &_pkt_func_61;
         return _pkt_func_61;
-#endif
-#endif
-#endif
-#endif
-#endif
 #endif
     } else {
         __builtin_unreachable();
@@ -304,9 +315,12 @@ DccPkt DccThrottle::next_packet()
 
 // This is called (at interrupt level) if any railcom channel2 messages are
 // received in the cutout following a DCC message from this throttle.
-void DccThrottle::railcom(const RailComMsg *msg, int msg_cnt)
+void DccThrottle::railcom(const RailComMsg *const msg, int msg_cnt)
 {
-    constexpr bool verbosity = 9;
+    constexpr int verbosity = 0;
+
+    // verbosity 9: print all dcc sent and railcom received
+    // verbosity 1: print only railcom pom received
 
     if constexpr (verbosity >= 9) {
 
@@ -330,8 +344,7 @@ void DccThrottle::railcom(const RailComMsg *msg, int msg_cnt)
         } else {
             for (int i = 0; i < msg_cnt; i++) {
                 b += snprintf(b, e - b, " ");
-                b += msg->show(b, e - b);
-                msg++;
+                b += msg[i].show(b, e - b);
             }
         }
         b += snprintf(b, e - b, "}");
@@ -344,7 +357,7 @@ void DccThrottle::railcom(const RailComMsg *msg, int msg_cnt)
         char *e = nullptr;
 
         for (int i = 0; i < msg_cnt; i++) {
-            if (msg->id == RailComMsg::MsgId::pom) {
+            if (msg[i].id == RailComMsg::MsgId::pom) {
                 if (b == nullptr) {
                     b = BufLog::write_line_get();
                     if (b == nullptr)
@@ -354,18 +367,40 @@ void DccThrottle::railcom(const RailComMsg *msg, int msg_cnt)
                     // if there are two, put a space between them
                     b += snprintf(b, e - b, " ");
                 }
-                b += msg->show(b, e - b);
-                _read_cv_cnt = 0;
-                _write_cv_cnt = 0;
-                _write_bit_cnt = 0;
+                b += msg[i].show(b, e - b);
             }
-            msg++;
         }
 
         if (b != nullptr)
             BufLog::write_line_put();
     }
-}
+
+    for (int i = 0; i < msg_cnt; i++) {
+        if (msg[i].id == RailComMsg::MsgId::pom) {
+            if (_read_cv_cnt > 0) {
+                xassert(_write_cv_cnt == 0 && _write_bit_cnt == 0);
+                _ops_cv_done = true;
+                _ops_cv_val = msg[i].pom.val;
+                _read_cv_cnt = 0;
+            } else if (_write_cv_cnt > 0) {
+                xassert(_write_bit_cnt == 0);
+                _ops_cv_done = true;
+                _ops_cv_val = msg[i].pom.val;
+                _write_cv_cnt = 0;
+            } else if (_write_bit_cnt > 0) {
+                _ops_cv_done = true;
+                _ops_cv_val = msg[i].pom.val;
+                _write_bit_cnt = 0;
+            }
+        } else if (msg[i].id == RailComMsg::MsgId::dyn) {
+            if (msg[i].dyn.id == RailComSpec::DynId::dyn_speed_1) {
+                _speed = msg[i].dyn.val;
+                _speed_us = time_us_64();
+            }
+        }
+    }
+
+} // void DccThrottle::railcom(const RailComMsg *msg, int msg_cnt)
 
 void DccThrottle::show()
 {
@@ -375,22 +410,22 @@ void DccThrottle::show()
     printf("%s\n", _pkt_func_5.show(buf, sizeof(buf)));
     printf("%s\n", _pkt_func_9.show(buf, sizeof(buf)));
     printf("%s\n", _pkt_func_13.show(buf, sizeof(buf)));
-#if INCLUDE_DCC_FUNC_21
+#if (DCC_FUNC_MAX >= 21)
     printf("%s\n", _pkt_func_21.show(buf, sizeof(buf)));
-#if INCLUDE_DCC_FUNC_29
+#endif
+#if (DCC_FUNC_MAX >= 29)
     printf("%s\n", _pkt_func_29.show(buf, sizeof(buf)));
-#if INCLUDE_DCC_FUNC_37
+#endif
+#if (DCC_FUNC_MAX >= 37)
     printf("%s\n", _pkt_func_37.show(buf, sizeof(buf)));
-#if INCLUDE_DCC_FUNC_45
+#endif
+#if (DCC_FUNC_MAX >= 45)
     printf("%s\n", _pkt_func_45.show(buf, sizeof(buf)));
-#if INCLUDE_DCC_FUNC_53
+#endif
+#if (DCC_FUNC_MAX >= 53)
     printf("%s\n", _pkt_func_53.show(buf, sizeof(buf)));
-#if INCLUDE_DCC_FUNC_61
+#endif
+#if (DCC_FUNC_MAX >= 61)
     printf("%s\n", _pkt_func_61.show(buf, sizeof(buf)));
-#endif
-#endif
-#endif
-#endif
-#endif
 #endif
 }

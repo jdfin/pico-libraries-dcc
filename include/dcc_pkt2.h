@@ -25,7 +25,7 @@ public:
     {
     }
 
-    DccPkt2(const DccPkt &pkt, DccThrottle *throttle=nullptr) :
+    DccPkt2(const DccPkt &pkt, DccThrottle *throttle = nullptr) :
         _pkt(pkt), _throttle(throttle)
     {
     }
@@ -40,6 +40,12 @@ public:
 
     void set_throttle(DccThrottle *throttle)
     {
+        _throttle = throttle;
+    }
+
+    void set(DccPkt pkt, DccThrottle *throttle = nullptr)
+    {
+        _pkt = pkt;
         _throttle = throttle;
     }
 

@@ -13,7 +13,7 @@ class RailCom
 
 public:
 
-    RailCom(uart_inst_t *uart, int rx_gpio, int dbg_gpio = -1);
+    RailCom(uart_inst_t *uart, int rx_gpio);
 
     void reset()
     {
@@ -43,8 +43,6 @@ private:
 
     int _rx_gpio;
 
-    int _dbg_gpio;
-
     ///// Raw RailCom Data (4/8 encoded, and decoded bytes)
 
     static constexpr int pkt_max = RailComSpec::ch1_bytes + RailComSpec::ch2_bytes;
@@ -66,5 +64,14 @@ private:
 
     // true if there's no junk left over after parsing
     bool _parsed_all;
+
+    ///// Debug
+
+    // These are used to assert a GPIO on some event to trigger a scope.
+    // All default to -1 (disabled).
+    static int dbg_read;    // asserted for duration of RailCom::read()
+    static int dbg_junk;    // asserted when invalid bytes received
+    static int dbg_short;   // asserted when less than pkt_max bytes received
+    static void dbg_init(); // call this after changing any from default
 
 }; // class RailCom

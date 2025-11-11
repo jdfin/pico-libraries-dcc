@@ -24,10 +24,11 @@ public:
     void set_function(int func, bool on);
 
     void read_cv(int cv_num);
-    void read_bit(int cv_num, int bit_num);
 
     void write_cv(int cv_num, uint8_t cv_val);
     void write_bit(int cv_num, int bit_num, int bit_val);
+
+    bool ops_done(bool &result, uint8_t &value);
 
     DccPkt next_packet();
 
@@ -48,38 +49,38 @@ private:
     DccPktFunc5 _pkt_func_5;   // seq == 3
     DccPktFunc9 _pkt_func_9;   // seq == 5
     DccPktFunc13 _pkt_func_13; // seq == 7
-#if INCLUDE_DCC_FUNC_21
+#if (DCC_FUNC_MAX >= 21)
     DccPktFunc21 _pkt_func_21; // seq == 9
-#if INCLUDE_DCC_FUNC_29
+#endif
+#if (DCC_FUNC_MAX >= 29)
     DccPktFunc29 _pkt_func_29; // seq == 11
-#if INCLUDE_DCC_FUNC_37
+#endif
+#if (DCC_FUNC_MAX >= 37)
     DccPktFunc37 _pkt_func_37; // seq == 13
-#if INCLUDE_DCC_FUNC_45
+#endif
+#if (DCC_FUNC_MAX >= 45)
     DccPktFunc45 _pkt_func_45; // seq == 15
-#if INCLUDE_DCC_FUNC_53
+#endif
+#if (DCC_FUNC_MAX >= 53)
     DccPktFunc53 _pkt_func_53; // seq == 17
-#if INCLUDE_DCC_FUNC_61
+#endif
+#if (DCC_FUNC_MAX >= 61)
     DccPktFunc61 _pkt_func_61; // seq == 19
-#endif
-#endif
-#endif
-#endif
-#endif
 #endif
 
     // where in packet sequence we are
 
-#if INCLUDE_DCC_FUNC_61
+#if (DCC_FUNC_MAX >= 61)
     static const int seq_max = 20;
-#elif INCLUDE_DCC_FUNC_53
+#elif (DCC_FUNC_MAX >= 53)
     static const int seq_max = 18;
-#elif INCLUDE_DCC_FUNC_45
+#elif (DCC_FUNC_MAX >= 45)
     static const int seq_max = 16;
-#elif INCLUDE_DCC_FUNC_37
+#elif (DCC_FUNC_MAX >= 37)
     static const int seq_max = 14;
-#elif INCLUDE_DCC_FUNC_29
+#elif (DCC_FUNC_MAX >= 29)
     static const int seq_max = 12;
-#elif INCLUDE_DCC_FUNC_21
+#elif (DCC_FUNC_MAX >= 21)
     static const int seq_max = 10;
 #else
     static const int seq_max = 8;
@@ -87,18 +88,15 @@ private:
 
     int _seq; // _seq = 0 ... seq_max-1
 
-    // last packet returned by next_packet
+    // last packet returned by next_packet, saved so we can match received
+    // railcom data with the packet it came after
     DccPkt *_pkt_last;
 
     DccPktOpsReadCv _pkt_read_cv;
     static const int read_cv_send_cnt = 5; // how many times to send it
     int _read_cv_cnt;                      // times left to send it (5, 4, ... 1, 0)
 
-#if 0
-    DccPktOpsReadBit _pkt_read_bit;
-    static const int read_bit_send_cnt = 5; // how many times to send it
-    int _read_bit_cnt; // times left to send it (5, 4, ... 1, 0)
-#endif
+    // There is no ops "read bit" command
 
     DccPktOpsWriteCv _pkt_write_cv;
     static const int write_cv_send_cnt = 5; // how many times to send it
@@ -107,5 +105,12 @@ private:
     DccPktOpsWriteBit _pkt_write_bit;
     static const int write_bit_send_cnt = 5; // how many times to send it
     int _write_bit_cnt;                      // times left to send it (5, 4, ... 1, 0)
+
+    bool _ops_cv_done;
+    uint8_t _ops_cv_val;
+
+    // speed reported in railcom data, if any
+    uint8_t _speed;
+    uint64_t _speed_us;
 
 }; // class DccThrottle

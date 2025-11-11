@@ -8,25 +8,42 @@
 // (add_compile_options(-H) after pico_sdk_init() in top-level CMakeLists.txt)
 
 #include "pico.h"
+#include "hardware/uart.h"
 
 #if (defined RASPBERRYPI_PICO)
 
 // drives DCC
 
 // breadboard - encodes/drives DCC, reads/decodes RailCom
-static const int dcc_sig_gpio = 19; // PH
-static const int dcc_pwr_gpio = 18; // EN
-static const int dcc_slp_gpio = -1; // SLP
-static const int dcc_adc_gpio = 26; // CS (ADC0)
+constexpr int dcc_sig_gpio = 19; // PH
+constexpr int dcc_pwr_gpio = 18; // EN
+constexpr int dcc_slp_gpio = -1; // SLP
+constexpr int dcc_adc_gpio = 26; // CS (ADC0)
+
+constexpr int railcom_gpio = 17;
+uart_inst_t * const railcom_uart = uart0;
+
+constexpr int railcom_dbg_read_gpio = -1;
+constexpr int railcom_dbg_junk_gpio = -1;
+constexpr int railcom_dbg_short_gpio = -1;
+constexpr int dcc_bitstream_dbg_next_gpio = -1;
 
 #elif (defined PIMORONI_TINY2040)
 
 // reads/decodes DCC
 
-static const int dcc_sig_gpio = 7;
-static const int dcc_pwr_gpio = -1;
-static const int dcc_slp_gpio = -1;
-static const int dcc_adc_gpio = -1;
+static constexpr int dcc_sig_gpio = 7;
+static constexpr int dcc_pwr_gpio = -1;
+static constexpr int dcc_slp_gpio = -1;
+static constexpr int dcc_adc_gpio = -1;
+
+constexpr int railcom_gpio = 17;
+uart_inst_t * const railcom_uart = uart0;
+
+static constexpr int railcom_dbg_read_gpio = -1;
+static constexpr int railcom_dbg_junk_gpio = -1;
+static constexpr int railcom_dbg_short_gpio = -1;
+static constexpr int dcc_bitstream_dbg_next_gpio = -1;
 
 #else
 

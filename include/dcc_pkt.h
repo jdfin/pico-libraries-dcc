@@ -6,14 +6,9 @@
 
 #include "xassert.h"
 
+// ESU LokSound 5 supports F0...F31
 #define DCC_FUNC_MAX 31
 
-#define INCLUDE_DCC_FUNC_21 (DCC_FUNC_MAX >= 21)
-#define INCLUDE_DCC_FUNC_29 (DCC_FUNC_MAX >= 29)
-#define INCLUDE_DCC_FUNC_37 (DCC_FUNC_MAX >= 37)
-#define INCLUDE_DCC_FUNC_45 (DCC_FUNC_MAX >= 45)
-#define INCLUDE_DCC_FUNC_53 (DCC_FUNC_MAX >= 53)
-#define INCLUDE_DCC_FUNC_61 (DCC_FUNC_MAX >= 61)
 
 class DccPkt
 {
@@ -37,23 +32,23 @@ public:
         Func5,
         Func9,
         Func13,
-#if INCLUDE_DCC_FUNC_21
+#if (DCC_FUNC_MAX >= 21)
         Func21,
-#if INCLUDE_DCC_FUNC_29
+#endif
+#if (DCC_FUNC_MAX >= 29)
         Func29,
-#if INCLUDE_DCC_FUNC_37
+#endif
+#if (DCC_FUNC_MAX >= 37)
         Func37,
-#if INCLUDE_DCC_FUNC_45
+#endif
+#if (DCC_FUNC_MAX >= 45)
         Func45,
-#if INCLUDE_DCC_FUNC_53
+#endif
+#if (DCC_FUNC_MAX >= 53)
         Func53,
-#if INCLUDE_DCC_FUNC_61
+#endif
+#if (DCC_FUNC_MAX >= 61)
         Func61,
-#endif
-#endif
-#endif
-#endif
-#endif
 #endif
         OpsRead1Cv,
         OpsRead4Cv,
@@ -138,23 +133,23 @@ public:
     bool decode_func_5(int *f) const;  // f[4] is f5..f8
     bool decode_func_9(int *f) const;  // f[4] is f9..f12
     bool decode_func_13(int *f) const; // f[8] is f13..f20
-#if INCLUDE_DCC_FUNC_21
+#if (DCC_FUNC_MAX >= 21)
     bool decode_func_21(int *f) const; // f[8] is f21..f28
-#if INCLUDE_DCC_FUNC_29
+#endif
+#if (DCC_FUNC_MAX >= 29)
     bool decode_func_29(int *f) const; // f[8] is f29..f36
-#if INCLUDE_DCC_FUNC_37
+#endif
+#if (DCC_FUNC_MAX >= 37)
     bool decode_func_37(int *f) const; // f[8] is f37..f44
-#if INCLUDE_DCC_FUNC_45
+#endif
+#if (DCC_FUNC_MAX >= 45)
     bool decode_func_45(int *f) const; // f[8] is f45..f52
-#if INCLUDE_DCC_FUNC_53
+#endif
+#if (DCC_FUNC_MAX >= 53)
     bool decode_func_53(int *f) const; // f[8] is f53..f60
-#if INCLUDE_DCC_FUNC_61
+#endif
+#if (DCC_FUNC_MAX >= 61)
     bool decode_func_61(int *f) const; // f[8] is f61..f68
-#endif
-#endif
-#endif
-#endif
-#endif
 #endif
 
 protected:
@@ -375,34 +370,34 @@ private:
 // 2.3.6.5 - F13-F20 Function Control
 typedef DccPktFuncHi<0xde, 13> DccPktFunc13;
 
-#if INCLUDE_DCC_FUNC_21
+#if (DCC_FUNC_MAX >= 21)
 // 2.3.6.6 - F21-F28 Function Control
 typedef DccPktFuncHi<0xdf, 21> DccPktFunc21;
+#endif
 
-#if INCLUDE_DCC_FUNC_29
+#if (DCC_FUNC_MAX >= 29)
 // 2.3.6.7 - F29-F36 Function Control
 typedef DccPktFuncHi<0xd8, 29> DccPktFunc29;
+#endif
 
-#if INCLUDE_DCC_FUNC_37
+#if (DCC_FUNC_MAX >= 37)
 // 2.3.6.8 - F37-F44 Function Control
 typedef DccPktFuncHi<0xd9, 37> DccPktFunc37;
+#endif
 
-#if INCLUDE_DCC_FUNC_45
+#if (DCC_FUNC_MAX >= 45)
 // 2.3.6.9 - F45-F52 Function Control
 typedef DccPktFuncHi<0xda, 45> DccPktFunc45;
+#endif
 
-#if INCLUDE_DCC_FUNC_53
+#if (DCC_FUNC_MAX >= 53)
 // 2.3.6.10 - F53-F60 Function Control
 typedef DccPktFuncHi<0xdb, 53> DccPktFunc53;
+#endif
 
-#if INCLUDE_DCC_FUNC_61
+#if (DCC_FUNC_MAX >= 61)
 // 2.3.6.11 - F61-F68 Function Control
 typedef DccPktFuncHi<0xdc, 61> DccPktFunc61;
-#endif
-#endif
-#endif
-#endif
-#endif
 #endif
 
 // 2.3.7.3 - Configuration Variable Access - Long Form (read/verify byte)
@@ -423,6 +418,9 @@ private:
     void refresh(int adrs, int cv_num);
     int get_cv_num() const; // get from message
 };
+
+// There is no ops "read bit" command. It does not add any functionality, and
+// the returned value would just be the whole byte anyway.
 
 // 2.3.7.3 - Configuration Variable Access - Long Form (write byte)
 class DccPktOpsWriteCv : public DccPkt
