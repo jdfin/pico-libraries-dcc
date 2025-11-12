@@ -166,9 +166,14 @@ private:
         }
     }
 
-    int _reset1_cnt;
-    int _command_cnt;
-    int _reset2_cnt;
+    enum class SvcCmdStep {
+        NONE,
+        RESET1,     // sending initial resets (typ 20)
+        COMMAND,    // sending write or verify commands (typ 5)
+        RESET2,     // sending final resets (typ 5)
+    };
+    SvcCmdStep _svc_cmd_step;
+    int _svc_cmd_cnt;
 
     DccPktReset _pkt_reset;
 
