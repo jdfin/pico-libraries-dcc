@@ -63,14 +63,23 @@ public:
 
     void show();
 
-    // log ACKs detected to BufLog
-    bool show_acks() const
+    void show_dcc(bool show)
     {
-        return _show_acks;
+        _bitstream.show_dcc(show);
+        _show_acks = show;
     }
-    void show_acks(bool en)
+    bool show_dcc() const
     {
-        _show_acks = en;
+        return _bitstream.show_dcc();
+    }
+
+    void show_railcom(bool show)
+    {
+        _bitstream.show_railcom(show);
+    }
+    bool show_railcom() const
+    {
+        return _bitstream.show_railcom();
     }
 
 private:

@@ -44,9 +44,6 @@ DccCommand::DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc &adc,
         gpio_set_dir(slp_gpio, GPIO_OUT);
     }
     ack_reset();
-    _bitstream.show_dcc(true);
-    _bitstream.show_railcom(true);
-    show_acks(true);
     dbg_init();
     dbg_times_reset();
 }
