@@ -20,8 +20,8 @@ public:
                uart_inst_t *const rc_uart = nullptr, int rc_gpio = -1);
     ~DccCommand();
 
-    void mode_off();
-    void mode_ops();
+    void set_mode_off();
+    void set_mode_ops();
 
     void write_cv(int cv_num, uint8_t cv_val);
     void write_bit(int cv_num, int bit_num, int bit_val);
