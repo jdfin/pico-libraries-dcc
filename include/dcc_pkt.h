@@ -447,7 +447,6 @@ class DccPktOpsWriteBit : public DccPkt
 {
 public:
 
-    DccPktOpsWriteBit();
     DccPktOpsWriteBit(int adrs = address_default, int cv_num = 1, int bit_num = 0, int bit_val = 0);
     virtual int set_address(int adrs) override;
     void set_cv_bit(int cv_num, int bit_num, int bit_val);

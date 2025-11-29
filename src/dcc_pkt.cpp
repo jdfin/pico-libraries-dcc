@@ -1076,12 +1076,6 @@ DccPktOpsWriteBit::DccPktOpsWriteBit(int adrs, int cv_num, int bit_num, int bit_
     refresh(adrs, cv_num, bit_num, bit_val);
 }
 
-// constructor for when we know we'll be setting fields later
-DccPktOpsWriteBit::DccPktOpsWriteBit()
-{
-    refresh(3, 8, 0, 0);
-}
-
 int DccPktOpsWriteBit::set_address(int adrs)
 {
     xassert(address_min <= adrs && adrs <= address_max);
