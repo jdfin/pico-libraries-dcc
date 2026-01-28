@@ -1,5 +1,6 @@
 #include "dcc_bitstream.h"
 
+#include <cassert>
 #include <climits>
 #include <cstdint>
 #include <cstdio>
@@ -17,7 +18,6 @@
 #include "hardware/uart.h"
 #include "pwm_irq_mux.h" // misc/include
 #include "railcom.h"
-#include "xassert.h"
 
 #define LOG_DCC 1
 #define LOG_RAILCOM 1
@@ -81,8 +81,8 @@ DccBitstream::DccBitstream(DccCommand &command, int sig_gpio, int pwr_gpio,
     gpio_set_function(sig_gpio, GPIO_FUNC_PWM);
 
     // power gpio must be same PWM slice as signal gpio
-    xassert(pwm_gpio_to_slice_num(pwr_gpio) == _slice);
-    xassert(pwm_gpio_to_channel(pwr_gpio) == (1 - _channel));
+    assert(pwm_gpio_to_slice_num(pwr_gpio) == _slice);
+    assert(pwm_gpio_to_channel(pwr_gpio) == (1 - _channel));
 
     gpio_set_function(pwr_gpio, GPIO_FUNC_PWM);
 
@@ -198,7 +198,7 @@ void DccBitstream::next_bit()
             prog_bit_cutout();
             _bit_num--;
         } else {
-            xassert(_bit_num == 0);
+            assert(_bit_num == 0);
             // end of cutout, start preamble
             prog_bit(1); // first bit in preamble
             _byte_num = byte_num_preamble;
@@ -249,7 +249,7 @@ void DccBitstream::next_bit()
             _bit_num--;
         } else {
             // end of preamble, send packet start bit
-            xassert(_bit_num == 0);
+            assert(_bit_num == 0);
             prog_bit(0);
             _byte_num = 0; // first data byte
             _bit_num = 7;  // data goes msb first
@@ -257,12 +257,12 @@ void DccBitstream::next_bit()
             _command.get_packet(_current2);
         }
     } else {
-        xassert(0 <= _byte_num);
+        assert(0 <= _byte_num);
         // _bit_num can be more than 7 when sending preamble, but not here
-        xassert(-1 <= _bit_num && _bit_num <= 7);
+        assert(-1 <= _bit_num && _bit_num <= 7);
         // sending message bytes; _byte_num counts 0...msg_len-1
         int msg_len = _current2.len();
-        xassert(_byte_num < msg_len);
+        assert(_byte_num < msg_len);
         // _bit_num = 7...0, then -1 means stop bit
         if (_bit_num == -1) {
             // sent a byte, send stop bit
@@ -286,7 +286,7 @@ void DccBitstream::next_bit()
                 _bit_num = 7;
             }
         } else {
-            xassert(0 <= _bit_num && _bit_num <= 7);
+            assert(0 <= _bit_num && _bit_num <= 7);
             int b = (_current2.data(_byte_num) >> _bit_num) & 1;
             prog_bit(b);
             _bit_num--;

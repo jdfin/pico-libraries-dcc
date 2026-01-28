@@ -1,6 +1,7 @@
 
 #include "railcom.h"
 
+#include <cassert>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -8,7 +9,6 @@
 #include "dbg_gpio.h"
 #include "hardware/gpio.h"
 #include "hardware/uart.h"
-#include "xassert.h"
 
 
 int RailCom::dbg_read __attribute((weak)) = -1;
@@ -134,7 +134,7 @@ void RailCom::parse()
     _ch2_msg_cnt = 0;
     if ((d_end - d) == RailComSpec::ch2_bytes) {
         while (d < d_end) {
-            xassert(_ch2_msg_cnt < ch2_msg_max);
+            assert(_ch2_msg_cnt < ch2_msg_max);
             if (_ch2_msg[_ch2_msg_cnt].parse2(d, d_end)) {
                 _ch2_msg_cnt++;
             } else {

@@ -54,7 +54,7 @@ public:
 private:
 
     // verbosity:
-    // 0 - silent (xassert messages only)
+    // 0 - silent (assert messages only)
     // message per-packet would be in the callback
     // 2 - byte received (one message per byte)
     // 3 - bit received (one message per bit)

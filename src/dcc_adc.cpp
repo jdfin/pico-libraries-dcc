@@ -1,11 +1,11 @@
 #include "dcc_adc.h"
 
+#include <cassert>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 
 #include "hardware/adc.h"
-#include "xassert.h"
 
 
 DccAdc::DccAdc(int gpio) :
@@ -117,7 +117,7 @@ void DccAdc::log_init(int samples)
     }
     if (samples > 0) {
         _log = new uint16_t[samples];
-        xassert(_log != nullptr);
+        assert(_log != nullptr);
         _log_max = samples;
         _log_idx = 0;
     }

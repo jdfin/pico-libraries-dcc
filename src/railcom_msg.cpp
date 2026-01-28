@@ -1,11 +1,10 @@
 
 #include "railcom_msg.h"
 
+#include <cassert>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-
-#include "xassert.h"
 
 // Extract one message from decoded 6-bit data
 // Return true if message extracted, false on error
@@ -218,7 +217,7 @@ const char *RailComMsg::id_name() const
     static char names[id_max][name_max] = {
         // ack nak bsy pom  ahi  alo  ext  dyn xpom  inv
         "A", "N", "B", "C", "H", "L", "E", "D", "X", "I"};
-    xassert(int(id) < id_max);
+    assert(int(id) < id_max);
     return names[int(id)];
 }
 

@@ -1,5 +1,6 @@
 #include "dcc_throttle.h"
 
+#include <cassert>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -8,7 +9,6 @@
 #include "dcc_pkt.h"
 #include "hardware/timer.h"
 #include "railcom_msg.h"
-#include "xassert.h"
 
 DccThrottle::DccThrottle(int address) :
     _seq(0),
@@ -79,7 +79,7 @@ void DccThrottle::set_speed(int speed)
 
 bool DccThrottle::get_function(int num) const
 {
-    xassert(DccPkt::function_min <= num && num <= DccPkt::function_max);
+    assert(DccPkt::function_min <= num && num <= DccPkt::function_max);
 
     if (num <= 4) {
         return _pkt_func_0.get_f(num);
@@ -114,14 +114,14 @@ bool DccThrottle::get_function(int num) const
         return _pkt_func_61.get_f(num);
 #endif
     } else {
-        xassert(false);
+        assert(false);
         return false;
     }
 }
 
 void DccThrottle::set_function(int num, bool on)
 {
-    xassert(DccPkt::function_min <= num && num <= DccPkt::function_max);
+    assert(DccPkt::function_min <= num && num <= DccPkt::function_max);
 
     if (num <= 4) {
         _pkt_func_0.set_f(num, on);
@@ -166,7 +166,7 @@ void DccThrottle::set_function(int num, bool on)
         _seq = 19;
 #endif
     } else {
-        xassert(false);
+        assert(false);
     }
 }
 
@@ -220,7 +220,7 @@ bool DccThrottle::ops_done(bool &result, uint8_t &value)
 // 18. Speed    19. F61-F68
 DccPkt DccThrottle::next_packet()
 {
-    xassert(0 <= _seq && _seq < seq_max);
+    assert(0 <= _seq && _seq < seq_max);
 
     if (_read_cv_cnt > 0) {
         _read_cv_cnt--;
@@ -370,13 +370,13 @@ void DccThrottle::railcom(const RailComMsg *const msg, int msg_cnt)
     for (int i = 0; i < msg_cnt; i++) {
         if (msg[i].id == RailComMsg::MsgId::pom) {
             if (_read_cv_cnt > 0) {
-                xassert(_write_cv_cnt == 0 && _write_bit_cnt == 0);
+                assert(_write_cv_cnt == 0 && _write_bit_cnt == 0);
                 _ops_cv_done = true;
                 _ops_cv_status = true;
                 _ops_cv_val = msg[i].pom.val;
                 _read_cv_cnt = 0;
             } else if (_write_cv_cnt > 0) {
-                xassert(_write_bit_cnt == 0);
+                assert(_write_bit_cnt == 0);
                 _ops_cv_done = true;
                 _ops_cv_status = true;
                 _ops_cv_val = msg[i].pom.val;

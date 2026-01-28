@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cassert>
+
 #include "dcc_pkt.h"
 
 // DccPkt2 knows:
@@ -63,7 +65,7 @@ public:
     // data byte
     uint8_t data(int idx)
     {
-        xassert(idx >= 0 && idx < _pkt.msg_len());
+        assert(idx >= 0 && idx < _pkt.msg_len());
         return _pkt.data(idx);
     }
 

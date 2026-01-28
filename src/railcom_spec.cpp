@@ -1,8 +1,8 @@
 #include "railcom_spec.h"
 
+#include <cassert>
 #include <cstdint>
 
-#include "xassert.h"
 
 namespace RailComSpec {
 
@@ -83,7 +83,7 @@ const char *dyn_name(DynId id)
         "ID48",  "ID49",   "ID50",   "ID51",   "ID52",  "ID53",   "ID54",  "ID55",  // 48..55
         "ID56",  "ID57",   "ID58",   "ID59",   "ID60",  "ID61",   "ID62",  "ID63",  // 56..63
     };
-    xassert(id < DynId::dyn_max);
+    assert(id < DynId::dyn_max);
     return names[id];
 }
 

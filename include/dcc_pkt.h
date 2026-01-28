@@ -1,10 +1,9 @@
 #pragma once
 
+#include <cassert>
 #include <climits>
 #include <cstdint>
 #include <cstring>
-
-#include "xassert.h"
 
 // ESU LokSound 5 supports F0...F31
 #define DCC_FUNC_MAX 31
@@ -292,20 +291,20 @@ public:
 
     DccPktFuncHi(int adrs = 3)
     {
-        xassert(address_min <= adrs && adrs <= address_max);
+        assert(address_min <= adrs && adrs <= address_max);
         refresh(adrs);
     }
 
     virtual int set_address(int adrs) override
     {
-        xassert(address_min <= adrs && adrs <= address_max);
+        assert(address_min <= adrs && adrs <= address_max);
         refresh(adrs, get_funcs());
         return get_address_size();
     }
 
     bool get_f(int num) const
     {
-        xassert(f_min <= num && num <= (f_min + 7));
+        assert(f_min <= num && num <= (f_min + 7));
         int idx = get_address_size() + 1;   // skip address and inst byte
         uint8_t f_bit = 1 << (num - f_min); // bit for function
         return (_msg[idx] & f_bit) != 0;
@@ -313,7 +312,7 @@ public:
 
     void set_f(int num, bool on)
     {
-        xassert(f_min <= num && num <= (f_min + 7));
+        assert(f_min <= num && num <= (f_min + 7));
 
         int idx = get_address_size() + 1;   // skip address and inst byte
         uint8_t f_bit = 1 << (num - f_min); // bit for function
@@ -346,7 +345,7 @@ private:
 
     void refresh(int adrs, uint8_t funcs = 0)
     {
-        xassert(address_min <= adrs && adrs <= address_max);
+        assert(address_min <= adrs && adrs <= address_max);
         int idx = DccPkt::set_address(adrs); // 1 or 2 bytes
         _msg[idx++] = i_byte;
         _msg[idx++] = funcs; // f_min+7:f_min+6:...:f_min+1:f_min

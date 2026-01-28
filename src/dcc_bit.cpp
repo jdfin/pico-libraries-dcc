@@ -1,10 +1,9 @@
 #include "dcc_bit.h"
 
+#include <cassert>
 #include <climits>
 #include <cstdint>
 #include <cstdio>
-
-#include "xassert.h"
 
 
 DccBit::DccBit(int verbosity) :
@@ -30,7 +29,7 @@ DccBit::~DccBit()
 
 void DccBit::on_pkt_recv(pkt_recv_t *pkt_recv)
 {
-    xassert(pkt_recv != nullptr);
+    assert(pkt_recv != nullptr);
     _pkt_recv = pkt_recv;
 }
 
@@ -165,7 +164,7 @@ void DccBit::half_bit(int half)
             break;
 
         default:
-            xassert(false);
+            assert(false);
             break;
 
     } // switch (_bit_state)
@@ -177,7 +176,7 @@ void DccBit::half_bit(int half)
 // returns true if complete packet received and processed, false otherwise
 bool DccBit::bit_rx()
 {
-    xassert(_bit == 0 || _bit == 1);
+    assert(_bit == 0 || _bit == 1);
 
     if (_verbosity >= 3) {
         printf(" bit=%d", _bit);
@@ -187,7 +186,7 @@ bool DccBit::bit_rx()
     // If zero, starting the next byte; if one, emit packet in progress.
     // _bit_num 1..8 are used to build data byte (msb first)
 
-    xassert(0 <= _bit_num && _bit_num <= 8);
+    assert(0 <= _bit_num && _bit_num <= 8);
 
     if (_bit_num == 0) {
         if (_bit == 0) {

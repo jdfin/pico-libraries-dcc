@@ -1,15 +1,16 @@
 #include "dcc_pkt.h"
 
+#include <cassert>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 
 #include "pico/types.h" // uint
-#include "xassert.h"
+
 
 DccPkt::DccPkt(const uint8_t *msg, int msg_len)
 {
-    xassert(msg_len >= 0);
+    assert(msg_len >= 0);
 
     memset(_msg, 0, msg_max);
 
@@ -24,14 +25,14 @@ DccPkt::DccPkt(const uint8_t *msg, int msg_len)
 
 void DccPkt::msg_len(int new_len)
 {
-    xassert(0 <= new_len && new_len <= msg_max);
+    assert(0 <= new_len && new_len <= msg_max);
 
     _msg_len = new_len;
 }
 
 uint8_t DccPkt::data(int idx) const
 {
-    xassert(0 <= idx && idx < _msg_len);
+    assert(0 <= idx && idx < _msg_len);
 
     return _msg[idx];
 }
@@ -86,18 +87,18 @@ int DccPkt::get_address() const
 // return address bytes used (1 or 2)
 int DccPkt::set_address(int adrs)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
+    assert(address_min <= adrs && adrs <= address_max);
 
     if (adrs <= address_short_max) {
         // one byte in packet
-        xassert(msg_max >= 1);
+        assert(msg_max >= 1);
         _msg[0] = adrs;
         return 1;
     } else {
         // two bytes in packet
-        xassert(msg_max >= 2);
+        assert(msg_max >= 2);
         _msg[0] = 0xc0 | ((adrs >> 8) & 0x3f);
-        xassert(0xc0 <= _msg[0] && _msg[0] <= 0xe7);
+        assert(0xc0 <= _msg[0] && _msg[0] <= 0xe7);
         _msg[1] = adrs & 0xff;
         return 2;
     }
@@ -116,8 +117,8 @@ int DccPkt::get_address_size() const
 
 void DccPkt::set_xor()
 {
-    xassert(_msg_len > 0);
-    xassert(_msg_len < msg_max);
+    assert(_msg_len > 0);
+    assert(_msg_len < msg_max);
 
     uint8_t b = 0x00;
     for (int i = 0; i < (_msg_len - 1); i++) {
@@ -321,8 +322,8 @@ bool DccPkt::decode_func_29(int *f) const // int f[8] is f29..f36
 
 char *DccPkt::dump(char *buf, int buf_len) const
 {
-    xassert(buf != nullptr);
-    xassert(buf_len >= 0);
+    assert(buf != nullptr);
+    assert(buf_len >= 0);
 
     memset(buf, '\0', buf_len);
 
@@ -349,8 +350,8 @@ char *DccPkt::dump(char *buf, int buf_len) const
 
 char *DccPkt::show(char *buf, int buf_len) const
 {
-    xassert(buf != nullptr);
-    xassert(buf_len >= 0);
+    assert(buf != nullptr);
+    assert(buf_len >= 0);
 
     memset(buf, '\0', buf_len);
 
@@ -363,7 +364,7 @@ char *DccPkt::show(char *buf, int buf_len) const
         return buf;
 
     uint8_t b0 = _msg[idx++];
-    xassert(idx == 1);
+    assert(idx == 1);
 
     if (b0 < 128 || (192 <= b0 && b0 < 232)) {
         int adrs = b0;
@@ -385,7 +386,7 @@ char *DccPkt::show(char *buf, int buf_len) const
         }
 
         // idx is now the index of the first byte after the address
-        xassert(idx == 1 || idx == 2);
+        assert(idx == 1 || idx == 2);
 
         b += snprintf(b, e - b, "%d ", adrs);
 
@@ -498,7 +499,7 @@ char *DccPkt::show(char *buf, int buf_len) const
         }
 
     } else if (128 <= b0 && b0 < 192) {
-        xassert(idx == 1);
+        assert(idx == 1);
 
         // 2.4.1 Basic Accessory Decoder Packet Format
         // [preamble] 0 10AAAAAA 0 1AAADAAR 0 EEEEEEEE 1
@@ -593,7 +594,7 @@ void DccPkt::show_cv_access(char *&b, char *e, uint8_t instr, int idx) const
     // ops mode: instr is 1110_GGAA
     // GG is the operation
     // AA is bits 8 and 9 of the cv number
-    xassert((instr & 0xf0) == 0x70 || (instr & 0xf0) == 0xe0);
+    assert((instr & 0xf0) == 0x70 || (instr & 0xf0) == 0xe0);
 
     int op = (instr & 0x0c) >> 2;
     int cv = instr & 0x03;
@@ -670,8 +671,8 @@ DccPktReset::DccPktReset()
 
 DccPktSpeed128::DccPktSpeed128(int adrs, int speed)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
-    xassert(speed_min <= speed && speed <= speed_max);
+    assert(address_min <= adrs && adrs <= address_max);
+    assert(speed_min <= speed && speed <= speed_max);
 
     refresh(adrs, speed);
 }
@@ -693,7 +694,7 @@ bool DccPktSpeed128::is_type(const uint8_t *msg, int msg_len)
 
 int DccPktSpeed128::set_address(int adrs)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
+    assert(address_min <= adrs && adrs <= address_max);
 
     refresh(adrs, get_speed());
     return get_address_size();
@@ -707,7 +708,7 @@ int DccPktSpeed128::get_speed() const
 
 void DccPktSpeed128::set_speed(int speed)
 {
-    xassert(speed_min <= speed && speed <= speed_max);
+    assert(speed_min <= speed && speed <= speed_max);
 
     int idx = get_address_size() + 1; // skip address and inst byte (0x3f)
     _msg[idx] = int_to_dcc(speed);
@@ -716,8 +717,8 @@ void DccPktSpeed128::set_speed(int speed)
 
 void DccPktSpeed128::refresh(int adrs, int speed)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
-    xassert(speed_min <= speed && speed <= speed_max);
+    assert(address_min <= adrs && adrs <= address_max);
+    assert(speed_min <= speed && speed <= speed_max);
 
     int idx = DccPkt::set_address(adrs); // 1 or 2 bytes
     _msg[idx++] = 0x3f;                  // CCC=001 GGGGG=11111
@@ -750,14 +751,14 @@ int DccPktSpeed128::dcc_to_int(uint8_t speed_dcc)
 
 DccPktFunc0::DccPktFunc0(int adrs)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
+    assert(address_min <= adrs && adrs <= address_max);
 
     refresh(adrs);
 }
 
 int DccPktFunc0::set_address(int adrs)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
+    assert(address_min <= adrs && adrs <= address_max);
 
     refresh(adrs, get_funcs());
     return get_address_size();
@@ -765,7 +766,7 @@ int DccPktFunc0::set_address(int adrs)
 
 bool DccPktFunc0::get_f(int num) const
 {
-    xassert(f_min <= num && num <= f_max);
+    assert(f_min <= num && num <= f_max);
 
     int idx = get_address_size();                              // skip address
     uint8_t f_bit = ((num == 0) ? 0x10 : (0x01 << (num - 1))); // bit for function
@@ -774,7 +775,7 @@ bool DccPktFunc0::get_f(int num) const
 
 void DccPktFunc0::set_f(int num, bool on)
 {
-    xassert(f_min <= num && num <= f_max);
+    assert(f_min <= num && num <= f_max);
 
     int idx = get_address_size();                              // skip address
     uint8_t f_bit = ((num == 0) ? 0x10 : (0x01 << (num - 1))); // bit for function
@@ -803,8 +804,8 @@ bool DccPktFunc0::is_type(const uint8_t *msg, int msg_len)
 
 void DccPktFunc0::refresh(int adrs, uint8_t funcs)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
-    xassert((funcs & ~0x1f) == 0);
+    assert(address_min <= adrs && adrs <= address_max);
+    assert((funcs & ~0x1f) == 0);
 
     int idx = DccPkt::set_address(adrs); // 1 or 2 bytes
     _msg[idx++] = 0x80 | funcs;          // CCC=100, then f0:f4:f3:f2:f1
@@ -822,14 +823,14 @@ uint8_t DccPktFunc0::get_funcs() const
 
 DccPktFunc5::DccPktFunc5(int adrs)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
+    assert(address_min <= adrs && adrs <= address_max);
 
     refresh(adrs);
 }
 
 int DccPktFunc5::set_address(int adrs)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
+    assert(address_min <= adrs && adrs <= address_max);
 
     refresh(adrs, get_funcs());
     return get_address_size();
@@ -837,7 +838,7 @@ int DccPktFunc5::set_address(int adrs)
 
 bool DccPktFunc5::get_f(int num) const
 {
-    xassert(f_min <= num && num <= f_max);
+    assert(f_min <= num && num <= f_max);
 
     int idx = get_address_size();          // skip address
     uint8_t f_bit = 0x01 << (num - f_min); // bit for function
@@ -846,7 +847,7 @@ bool DccPktFunc5::get_f(int num) const
 
 void DccPktFunc5::set_f(int num, bool on)
 {
-    xassert(f_min <= num && num <= f_max);
+    assert(f_min <= num && num <= f_max);
 
     int idx = get_address_size();          // skip address
     uint8_t f_bit = 0x01 << (num - f_min); // bit for function
@@ -875,8 +876,8 @@ bool DccPktFunc5::is_type(const uint8_t *msg, int msg_len)
 
 void DccPktFunc5::refresh(int adrs, uint8_t funcs)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
-    xassert((funcs & ~0x0f) == 0);
+    assert(address_min <= adrs && adrs <= address_max);
+    assert((funcs & ~0x0f) == 0);
 
     int idx = DccPkt::set_address(adrs); // 1 or 2 bytes
     _msg[idx++] = 0xb0 | funcs;          // CCC=101, S=1, then f8:f7:f6:f5
@@ -894,14 +895,14 @@ uint8_t DccPktFunc5::get_funcs() const
 
 DccPktFunc9::DccPktFunc9(int adrs)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
+    assert(address_min <= adrs && adrs <= address_max);
 
     refresh(adrs);
 }
 
 int DccPktFunc9::set_address(int adrs)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
+    assert(address_min <= adrs && adrs <= address_max);
 
     refresh(adrs, get_funcs());
     return get_address_size();
@@ -909,7 +910,7 @@ int DccPktFunc9::set_address(int adrs)
 
 bool DccPktFunc9::get_f(int num) const
 {
-    xassert(f_min <= num && num <= f_max);
+    assert(f_min <= num && num <= f_max);
 
     int idx = get_address_size();          // skip address
     uint8_t f_bit = 0x01 << (num - f_min); // bit for function
@@ -918,7 +919,7 @@ bool DccPktFunc9::get_f(int num) const
 
 void DccPktFunc9::set_f(int num, bool on)
 {
-    xassert(f_min <= num && num <= f_max);
+    assert(f_min <= num && num <= f_max);
 
     int idx = get_address_size();          // skip address
     uint8_t f_bit = 0x01 << (num - f_min); // bit for function
@@ -947,8 +948,8 @@ bool DccPktFunc9::is_type(const uint8_t *msg, int msg_len)
 
 void DccPktFunc9::refresh(int adrs, uint8_t funcs)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
-    xassert((funcs & ~0x0f) == 0);
+    assert(address_min <= adrs && adrs <= address_max);
+    assert((funcs & ~0x0f) == 0);
 
     int idx = DccPkt::set_address(adrs); // 1 or 2 bytes
     _msg[idx++] = 0xa0 | funcs;          // CCC=101, S=0, then f12:f11:f10:f9
@@ -966,15 +967,15 @@ uint8_t DccPktFunc9::get_funcs() const
 
 DccPktOpsReadCv::DccPktOpsReadCv(int adrs, int cv_num)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);
+    assert(address_min <= adrs && adrs <= address_max);
+    assert(cv_num_min <= cv_num && cv_num <= cv_num_max);
 
     refresh(adrs, cv_num);
 }
 
 int DccPktOpsReadCv::set_address(int adrs)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
+    assert(address_min <= adrs && adrs <= address_max);
 
     refresh(adrs, get_cv_num());
     return get_address_size();
@@ -982,7 +983,7 @@ int DccPktOpsReadCv::set_address(int adrs)
 
 void DccPktOpsReadCv::set_cv(int cv_num)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
+    assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
     cv_num--;                           // cv_num is encoded in messages as 0..1023
     int idx = get_address_size();       // skip address (1 or 2 bytes)
@@ -995,8 +996,8 @@ void DccPktOpsReadCv::set_cv(int cv_num)
 
 void DccPktOpsReadCv::refresh(int adrs, int cv_num)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
+    assert(address_min <= adrs && adrs <= address_max);
+    assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
     (void)DccPkt::set_address(adrs); // insert address (1 or 2 bytes)
     set_cv(cv_num);                  // insert everything else
@@ -1014,15 +1015,15 @@ int DccPktOpsReadCv::get_cv_num() const
 
 DccPktOpsWriteCv::DccPktOpsWriteCv(int adrs, int cv_num, uint8_t cv_val)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max);
+    assert(address_min <= adrs && adrs <= address_max);
+    assert(cv_num_min <= cv_num && cv_num <= cv_num_max);
 
     refresh(adrs, cv_num, cv_val);
 }
 
 int DccPktOpsWriteCv::set_address(int adrs)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
+    assert(address_min <= adrs && adrs <= address_max);
 
     refresh(adrs, get_cv_num(), get_cv_val());
     return get_address_size();
@@ -1030,7 +1031,7 @@ int DccPktOpsWriteCv::set_address(int adrs)
 
 void DccPktOpsWriteCv::set_cv(int cv_num, uint8_t cv_val)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
+    assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
     cv_num--;                           // cv_num is encoded in messages as 0..1023
     int idx = get_address_size();       // skip address (1 or 2 bytes)
@@ -1043,8 +1044,8 @@ void DccPktOpsWriteCv::set_cv(int cv_num, uint8_t cv_val)
 
 void DccPktOpsWriteCv::refresh(int adrs, int cv_num, uint8_t cv_val)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
+    assert(address_min <= adrs && adrs <= address_max);
+    assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
     (void)DccPkt::set_address(adrs); // insert address (1 or 2 bytes)
     set_cv(cv_num, cv_val);          // insert everything else
@@ -1068,17 +1069,17 @@ uint8_t DccPktOpsWriteCv::get_cv_val() const
 
 DccPktOpsWriteBit::DccPktOpsWriteBit(int adrs, int cv_num, int bit_num, int bit_val)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
-    xassert(0 <= bit_num && bit_num <= 7);
-    xassert(bit_val == 0 || bit_val == 1);
+    assert(address_min <= adrs && adrs <= address_max);
+    assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
+    assert(0 <= bit_num && bit_num <= 7);
+    assert(bit_val == 0 || bit_val == 1);
 
     refresh(adrs, cv_num, bit_num, bit_val);
 }
 
 int DccPktOpsWriteBit::set_address(int adrs)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
+    assert(address_min <= adrs && adrs <= address_max);
 
     refresh(adrs, get_cv_num(), get_bit_num(), get_bit_val());
     return get_address_size();
@@ -1087,9 +1088,9 @@ int DccPktOpsWriteBit::set_address(int adrs)
 // set cv_num, bit_num, and bit_val in message
 void DccPktOpsWriteBit::set_cv_bit(int cv_num, int bit_num, int bit_val)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
-    xassert(0 <= bit_num && bit_num <= 7);
-    xassert(bit_val == 0 || bit_val == 1);
+    assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
+    assert(0 <= bit_num && bit_num <= 7);
+    assert(bit_val == 0 || bit_val == 1);
 
     cv_num--;                                      // cv_num is encoded in messages as 0..1023
     int idx = get_address_size();                  // skip address (1 or 2 bytes)
@@ -1103,10 +1104,10 @@ void DccPktOpsWriteBit::set_cv_bit(int cv_num, int bit_num, int bit_val)
 // update message where bytes in address (1 or 2) might be changing
 void DccPktOpsWriteBit::refresh(int adrs, int cv_num, int bit_num, int bit_val)
 {
-    xassert(address_min <= adrs && adrs <= address_max);
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
-    xassert(0 <= bit_num && bit_num <= 7);
-    xassert(bit_val == 0 || bit_val == 1);
+    assert(address_min <= adrs && adrs <= address_max);
+    assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
+    assert(0 <= bit_num && bit_num <= 7);
+    assert(bit_val == 0 || bit_val == 1);
 
     (void)DccPkt::set_address(adrs);      // insert address (1 or 2 bytes)
     set_cv_bit(cv_num, bit_num, bit_val); // insert everything else
@@ -1139,14 +1140,14 @@ int DccPktOpsWriteBit::get_bit_val() const
 
 DccPktSvcWriteCv::DccPktSvcWriteCv(int cv_num, uint8_t cv_val)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
+    assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
     set_cv(cv_num, cv_val);
 }
 
 void DccPktSvcWriteCv::set_cv(int cv_num, uint8_t cv_val)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
+    assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
     cv_num--;                       // cv_num is encoded in messages as 0..1023
     _msg[0] = 0x7c | (cv_num >> 8); // 0111CCAA, CC=11 "write byte"
@@ -1160,16 +1161,16 @@ void DccPktSvcWriteCv::set_cv(int cv_num, uint8_t cv_val)
 
 DccPktSvcWriteBit::DccPktSvcWriteBit(int cv_num, int bit_num, int bit_val)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
+    assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
     set_cv_bit(cv_num, bit_num, bit_val);
 }
 
 void DccPktSvcWriteBit::set_cv_bit(int cv_num, int bit_num, int bit_val)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
-    xassert(0 <= bit_num && bit_num <= 7);
-    xassert(bit_val == 0 || bit_val == 1);
+    assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
+    assert(0 <= bit_num && bit_num <= 7);
+    assert(bit_val == 0 || bit_val == 1);
 
     cv_num--; // cv_num is encoded in messages as 0..1023
     _msg[0] = 0x78 | (cv_num >> 8);
@@ -1183,7 +1184,7 @@ void DccPktSvcWriteBit::set_cv_bit(int cv_num, int bit_num, int bit_val)
 
 DccPktSvcVerifyCv::DccPktSvcVerifyCv(int cv_num, uint8_t cv_val)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
+    assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
     set_cv_num(cv_num);
     set_cv_val(cv_val);
@@ -1191,7 +1192,7 @@ DccPktSvcVerifyCv::DccPktSvcVerifyCv(int cv_num, uint8_t cv_val)
 
 void DccPktSvcVerifyCv::set_cv_num(int cv_num)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
+    assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
     cv_num--;                       // cv_num is encoded in messages as 0..1023
     _msg[0] = 0x74 | (cv_num >> 8); // 0111CCAA, CC=01 "verify byte"
@@ -1214,9 +1215,9 @@ void DccPktSvcVerifyCv::set_cv_val(uint8_t cv_val)
 
 DccPktSvcVerifyBit::DccPktSvcVerifyBit(int cv_num, int bit_num, int bit_val)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
-    xassert(0 <= bit_num && bit_num <= 7);
-    xassert(bit_val == 0 || bit_val == 1);
+    assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
+    assert(0 <= bit_num && bit_num <= 7);
+    assert(bit_val == 0 || bit_val == 1);
 
     set_cv_num(cv_num);
     set_bit(bit_num, bit_val);
@@ -1224,7 +1225,7 @@ DccPktSvcVerifyBit::DccPktSvcVerifyBit(int cv_num, int bit_num, int bit_val)
 
 void DccPktSvcVerifyBit::set_cv_num(int cv_num)
 {
-    xassert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
+    assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
     cv_num--; // cv_num is encoded in messages as 0..1023
     _msg[0] = 0x78 | (cv_num >> 8);
@@ -1236,8 +1237,8 @@ void DccPktSvcVerifyBit::set_cv_num(int cv_num)
 
 void DccPktSvcVerifyBit::set_bit(int bit_num, int bit_val)
 {
-    xassert(0 <= bit_num && bit_num <= 7);
-    xassert(bit_val == 0 || bit_val == 1);
+    assert(0 <= bit_num && bit_num <= 7);
+    assert(bit_val == 0 || bit_val == 1);
 
     // do not clobber cv_num
     //_msg[0] = 0x78 | (cv_num >> 8);
@@ -1313,7 +1314,7 @@ DccPkt::PktType DccPkt::decode_type(const uint8_t *msg, int msg_len)
 
 DccPkt::PktType DccPkt::decode_payload(const uint8_t *pay, int pay_len)
 {
-    xassert(pay_len >= 1);
+    assert(pay_len >= 1);
     uint8_t ccc = (pay[0] & 0xe0) >> 5; // top three bits
     if (ccc == 0) {
         // 2.3.1 Decoder and Consist Control
