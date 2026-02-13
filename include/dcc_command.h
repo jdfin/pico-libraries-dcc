@@ -105,6 +105,8 @@ private:
     std::list<DccLoco *> _locos;
     std::list<DccLoco *>::iterator _next_loco;
 
+    DccPktIdle _pkt_idle;
+
     void get_packet_ops(DccPkt2 &pkt);
 
     // used by write_cv(), write_bit(), read_cv(), and read_bit()

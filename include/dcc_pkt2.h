@@ -32,19 +32,6 @@ public:
     {
     }
 
-    // Change the packet and loco.
-    // Hopefully these go away.
-
-    void set_pkt(DccPkt pkt)
-    {
-        _pkt = pkt;
-    }
-
-    void set_loco(DccLoco *loco)
-    {
-        _loco = loco;
-    }
-
     void set(DccPkt pkt, DccLoco *loco = nullptr)
     {
         _pkt = pkt;

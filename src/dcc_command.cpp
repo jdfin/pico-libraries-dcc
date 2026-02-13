@@ -203,9 +203,7 @@ void DccCommand::get_packet(DccPkt2 &pkt2) // called in interrupt context
 void DccCommand::get_packet_ops(DccPkt2 &pkt2) // called in interrupt context
 {
     if (_next_loco == _locos.end()) {
-        // XXX no locos - return an idle packet
-        // XXX how did we get into ops mode?
-        assert(false);
+        pkt2.set(_pkt_idle); // no locos
     } else {
         pkt2.set((*_next_loco)->next_packet(), *_next_loco);
         _next_loco++;
