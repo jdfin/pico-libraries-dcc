@@ -965,7 +965,7 @@ uint8_t DccPktFunc9::get_funcs() const
 
 //----------------------------------------------------------------------------
 
-DccPktOpsReadCv::DccPktOpsReadCv(int adrs, int cv_num)
+DccPktReadCv::DccPktReadCv(int adrs, int cv_num)
 {
     assert(address_min <= adrs && adrs <= address_max);
     assert(cv_num_min <= cv_num && cv_num <= cv_num_max);
@@ -973,7 +973,7 @@ DccPktOpsReadCv::DccPktOpsReadCv(int adrs, int cv_num)
     refresh(adrs, cv_num);
 }
 
-int DccPktOpsReadCv::set_address(int adrs)
+int DccPktReadCv::set_address(int adrs)
 {
     assert(address_min <= adrs && adrs <= address_max);
 
@@ -981,7 +981,7 @@ int DccPktOpsReadCv::set_address(int adrs)
     return get_address_size();
 }
 
-void DccPktOpsReadCv::set_cv(int cv_num)
+void DccPktReadCv::set_cv(int cv_num)
 {
     assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
@@ -994,7 +994,7 @@ void DccPktOpsReadCv::set_cv(int cv_num)
     set_xor();
 }
 
-void DccPktOpsReadCv::refresh(int adrs, int cv_num)
+void DccPktReadCv::refresh(int adrs, int cv_num)
 {
     assert(address_min <= adrs && adrs <= address_max);
     assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
@@ -1003,7 +1003,7 @@ void DccPktOpsReadCv::refresh(int adrs, int cv_num)
     set_cv(cv_num);                  // insert everything else
 }
 
-int DccPktOpsReadCv::get_cv_num() const
+int DccPktReadCv::get_cv_num() const
 {
     int idx = get_address_size();          // skip address (1 or 2 bytes)
     int cv_hi = _msg[idx++] & 0x03;        // get 2 hi bits
@@ -1013,7 +1013,7 @@ int DccPktOpsReadCv::get_cv_num() const
 
 //----------------------------------------------------------------------------
 
-DccPktOpsWriteCv::DccPktOpsWriteCv(int adrs, int cv_num, uint8_t cv_val)
+DccPktWriteCv::DccPktWriteCv(int adrs, int cv_num, uint8_t cv_val)
 {
     assert(address_min <= adrs && adrs <= address_max);
     assert(cv_num_min <= cv_num && cv_num <= cv_num_max);
@@ -1021,7 +1021,7 @@ DccPktOpsWriteCv::DccPktOpsWriteCv(int adrs, int cv_num, uint8_t cv_val)
     refresh(adrs, cv_num, cv_val);
 }
 
-int DccPktOpsWriteCv::set_address(int adrs)
+int DccPktWriteCv::set_address(int adrs)
 {
     assert(address_min <= adrs && adrs <= address_max);
 
@@ -1029,7 +1029,7 @@ int DccPktOpsWriteCv::set_address(int adrs)
     return get_address_size();
 }
 
-void DccPktOpsWriteCv::set_cv(int cv_num, uint8_t cv_val)
+void DccPktWriteCv::set_cv(int cv_num, uint8_t cv_val)
 {
     assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
 
@@ -1042,7 +1042,7 @@ void DccPktOpsWriteCv::set_cv(int cv_num, uint8_t cv_val)
     set_xor();
 }
 
-void DccPktOpsWriteCv::refresh(int adrs, int cv_num, uint8_t cv_val)
+void DccPktWriteCv::refresh(int adrs, int cv_num, uint8_t cv_val)
 {
     assert(address_min <= adrs && adrs <= address_max);
     assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
@@ -1051,7 +1051,7 @@ void DccPktOpsWriteCv::refresh(int adrs, int cv_num, uint8_t cv_val)
     set_cv(cv_num, cv_val);          // insert everything else
 }
 
-int DccPktOpsWriteCv::get_cv_num() const
+int DccPktWriteCv::get_cv_num() const
 {
     int idx = get_address_size();          // skip address (1 or 2 bytes)
     int cv_hi = _msg[idx++] & 0x03;        // get 2 hi bits
@@ -1059,7 +1059,7 @@ int DccPktOpsWriteCv::get_cv_num() const
     return cv_num + 1;                     // cv_num is 0..1023 in message, return 1..1024
 }
 
-uint8_t DccPktOpsWriteCv::get_cv_val() const
+uint8_t DccPktWriteCv::get_cv_val() const
 {
     int idx = get_address_size() + 2; // skip address, instruction, cv_num
     return _msg[idx];
@@ -1067,7 +1067,7 @@ uint8_t DccPktOpsWriteCv::get_cv_val() const
 
 //----------------------------------------------------------------------------
 
-DccPktOpsWriteBit::DccPktOpsWriteBit(int adrs, int cv_num, int bit_num, int bit_val)
+DccPktWriteBit::DccPktWriteBit(int adrs, int cv_num, int bit_num, int bit_val)
 {
     assert(address_min <= adrs && adrs <= address_max);
     assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
@@ -1077,7 +1077,7 @@ DccPktOpsWriteBit::DccPktOpsWriteBit(int adrs, int cv_num, int bit_num, int bit_
     refresh(adrs, cv_num, bit_num, bit_val);
 }
 
-int DccPktOpsWriteBit::set_address(int adrs)
+int DccPktWriteBit::set_address(int adrs)
 {
     assert(address_min <= adrs && adrs <= address_max);
 
@@ -1086,7 +1086,7 @@ int DccPktOpsWriteBit::set_address(int adrs)
 }
 
 // set cv_num, bit_num, and bit_val in message
-void DccPktOpsWriteBit::set_cv_bit(int cv_num, int bit_num, int bit_val)
+void DccPktWriteBit::set_cv_bit(int cv_num, int bit_num, int bit_val)
 {
     assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
     assert(0 <= bit_num && bit_num <= 7);
@@ -1102,7 +1102,7 @@ void DccPktOpsWriteBit::set_cv_bit(int cv_num, int bit_num, int bit_val)
 }
 
 // update message where bytes in address (1 or 2) might be changing
-void DccPktOpsWriteBit::refresh(int adrs, int cv_num, int bit_num, int bit_val)
+void DccPktWriteBit::refresh(int adrs, int cv_num, int bit_num, int bit_val)
 {
     assert(address_min <= adrs && adrs <= address_max);
     assert(cv_num_min <= cv_num && cv_num <= cv_num_max); // 1..1024
@@ -1114,7 +1114,7 @@ void DccPktOpsWriteBit::refresh(int adrs, int cv_num, int bit_num, int bit_val)
 }
 
 // get cv_num from message
-int DccPktOpsWriteBit::get_cv_num() const
+int DccPktWriteBit::get_cv_num() const
 {
     int idx = get_address_size();          // skip address (1 or 2 bytes)
     int cv_hi = _msg[idx++] & 0x03;        // get 2 hi bits
@@ -1123,14 +1123,14 @@ int DccPktOpsWriteBit::get_cv_num() const
 }
 
 // get bit_num from message
-int DccPktOpsWriteBit::get_bit_num() const
+int DccPktWriteBit::get_bit_num() const
 {
     int idx = get_address_size() + 2; // skip address, instruction, cv_num
     return _msg[idx] & 0x07;          // return lo 3 bits
 }
 
 // get bit_val from message
-int DccPktOpsWriteBit::get_bit_val() const
+int DccPktWriteBit::get_bit_val() const
 {
     int idx = get_address_size() + 2; // skip address, instruction, cv_num
     return (_msg[idx] >> 3) & 1;      // return bit 3

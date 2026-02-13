@@ -5,7 +5,7 @@
 
 #include "dcc_bitstream.h"
 #include "dcc_pkt2.h"
-#include "dcc_throttle.h"
+#include "dcc_loco.h"
 #include "hardware/uart.h"
 
 #undef INCLUDE_ACK_DBG
@@ -49,11 +49,11 @@ public:
 
     void loop();
 
-    DccThrottle *find_throttle(int address);
-    DccThrottle *create_throttle(int address = DccPkt::address_default);
-    DccThrottle *delete_throttle(DccThrottle *throttle);
-    DccThrottle *delete_throttle(int address);
-    void restart_throttles();
+    DccLoco *find_loco(int address);
+    DccLoco *create_loco(int address = DccPkt::address_default);
+    DccLoco *delete_loco(DccLoco *loco);
+    DccLoco *delete_loco(int address);
+    void restart_locos();
 
     void show();
 
@@ -69,14 +69,14 @@ public:
 
     void show_rc_speed(bool show)
     {
-        for (DccThrottle *t : _throttles)
+        for (DccLoco *t : _locos)
             t->show_rc_speed(show);
     }
 
     bool show_rc_speed()
     {
-        // return true if any throttle has show_rc_speed set
-        for (DccThrottle *t : _throttles)
+        // return true if any loco has show_rc_speed set
+        for (DccLoco *t : _locos)
             if (t->show_rc_speed())
                 return true;
         return false;
@@ -102,8 +102,8 @@ private:
 
     ModeSvc _mode_svc;
 
-    std::list<DccThrottle *> _throttles;
-    std::list<DccThrottle *>::iterator _next_throttle;
+    std::list<DccLoco *> _locos;
+    std::list<DccLoco *>::iterator _next_loco;
 
     void get_packet_ops(DccPkt2 &pkt);
 

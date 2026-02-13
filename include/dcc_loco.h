@@ -6,13 +6,13 @@
 
 class RailComMsg;
 
-class DccThrottle
+class DccLoco
 {
 
 public:
 
-    DccThrottle(int address = DccPkt::address_default);
-    ~DccThrottle();
+    DccLoco(int address = DccPkt::address_default);
+    ~DccLoco();
 
     int get_address() const;
     void set_address(int address);
@@ -94,17 +94,17 @@ private:
     // railcom data with the packet it came after
     DccPkt *_pkt_last;
 
-    DccPktOpsReadCv _pkt_read_cv;
+    DccPktReadCv _pkt_read_cv;
     static const int read_cv_send_cnt = 5; // how many times to send it
     int _read_cv_cnt; // times left to send it (5, 4, ... 1, 0)
 
     // There is no ops "read bit" command
 
-    DccPktOpsWriteCv _pkt_write_cv;
+    DccPktWriteCv _pkt_write_cv;
     static const int write_cv_send_cnt = 5; // how many times to send it
     int _write_cv_cnt; // times left to send it (5, 4, ... 1, 0)
 
-    DccPktOpsWriteBit _pkt_write_bit;
+    DccPktWriteBit _pkt_write_bit;
     static const int write_bit_send_cnt = 5; // how many times to send it
     int _write_bit_cnt; // times left to send it (5, 4, ... 1, 0)
 
@@ -117,4 +117,4 @@ private:
     uint64_t _rc_speed_us;
     bool _show_rc_speed;
 
-}; // class DccThrottle
+}; // class DccLoco

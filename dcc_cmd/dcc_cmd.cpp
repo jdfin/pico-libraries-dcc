@@ -19,7 +19,7 @@
 #include "dcc_cv.h"
 #include "dcc_gpio_cfg.h"
 #include "dcc_pkt.h"
-#include "dcc_throttle.h"
+#include "dcc_loco.h"
 #include "railcom.h"
 
 // Some commands, mainly service-mode reads and writes, take a while (a few
@@ -80,7 +80,7 @@ static bool cmd_show = true;
 static DccAdc adc(dcc_adc_gpio);
 static DccCommand command(dcc_sig_gpio, dcc_pwr_gpio, -1, adc, dcc_rcom_uart,
                           dcc_rcom_gpio);
-static DccThrottle *throttle = nullptr;
+static DccLoco *loco = nullptr;
 
 // When reading/writing CVs, the cv_num_g is set in one command and the read or
 // write command is in the next. Global statics are used to save them.
@@ -91,8 +91,8 @@ static int cv_val_g = DccPkt::cv_val_inv;
 
 static int address_g = DccPkt::address_inv;
 
-// Throttle that issued the last ops mode cv read/write command
-static DccThrottle *ops_throttle_g = nullptr;
+// Loco that issued the last ops mode cv read/write command
+static DccLoco *ops_loco_g = nullptr;
 
 // The start time of a long operation (read or write in service mode) is saved
 // so the overall time can be printed.
@@ -138,7 +138,7 @@ int main()
 
     adc.log_reset(); // logging must be enabled by calling adc.log_init()
 
-    throttle = command.create_throttle(); // default address 3
+    loco = command.create_loco(); // default address 3
 
     if (cmd_show) {
         printf("\n");
@@ -228,37 +228,37 @@ static void cmd_help(bool verbose)
 }
 
 
-// L ?          read loco address from current throttle
-// L <n>        set loco address in current throttle
-// L + <n>      create a new throttle for loco <n> and make it current
-// L - <n>      delete throttle for loco <n>
+// L ?          read loco address from current loco
+// L <n>        set loco address in current loco
+// L + <n>      create a new loco for loco <n> and make it current
+// L - <n>      delete loco for loco <n>
 
 static bool loco_try()
 {
     if (argv.argc() == 2) {
 
-        // read loco address from current throttle, or
-        // if there is a throttle with the given address,
+        // read loco address from current loco, or
+        // if there is a loco with the given address,
         //   make it current,
         // or if not,
-        //   set loco address in current throttle
+        //   set loco address in current loco
 
         if (strcmp(argv[1], "?") == 0) {
-            printf("%d\n", throttle->get_address());
+            printf("%d\n", loco->get_address());
             return true;
         }
 
-        int loco;
-        if (str_to_int(argv[1], &loco) && loco >= DccPkt::address_min &&
-            loco <= DccPkt::address_max) {
-            // if there's already a throttle for this loco, make it current
-            // otherwise set the address in the current throttle
-            DccThrottle *t = command.find_throttle(loco);
+        int loco_addr;
+        if (str_to_int(argv[1], &loco_addr) && loco_addr >= DccPkt::address_min &&
+            loco_addr <= DccPkt::address_max) {
+            // if there's already a loco for this address, make it current
+            // otherwise set the address in the current loco
+            DccLoco *t = command.find_loco(loco_addr);
             if (t != nullptr) {
-                throttle = t;
+                loco = t;
             } else {
-                throttle->set_address(loco);
-                command.restart_throttles();
+                loco->set_address(loco_addr);
+                command.restart_locos();
             }
             printf("OK\n");
             return true;
@@ -266,21 +266,21 @@ static bool loco_try()
 
     } else if (argv.argc() == 3) {
 
-        // create or delete a throttle
+        // create or delete a loco
 
-        int loco;
-        if (str_to_int(argv[2], &loco) && loco >= DccPkt::address_min &&
-            loco <= DccPkt::address_max) {
+        int loco_adrs;
+        if (str_to_int(argv[2], &loco_adrs) && loco_adrs >= DccPkt::address_min &&
+            loco_adrs <= DccPkt::address_max) {
 
             if (strcmp(argv[1], "+") == 0) {
-                throttle = command.create_throttle(loco);
+                loco = command.create_loco(loco_adrs);
                 printf("OK\n");
                 command.show();
                 return true;
             }
 
             if (strcmp(argv[1], "-") == 0) {
-                throttle = command.delete_throttle(loco);
+                loco = command.delete_loco(loco_adrs);
                 printf("OK\n");
                 command.show();
                 return true;
@@ -293,13 +293,13 @@ static bool loco_try()
 
 static void loco_help(bool verbose)
 {
-    print_help(verbose, "L ?", "read current address from throttle");
+    print_help(verbose, "L ?", "read current address from loco");
     print_help(verbose, "L <a>",
-               "set address in throttle for subsequent operations");
+               "set address in loco for subsequent operations");
     print_help(verbose, "L + <a>",
-               "create throttle for address <a> if it does not already exist");
+               "create loco for address <a> if it does not already exist");
     print_help(verbose, "L - <a>",
-               "delete throttle for address <a> if it exists");
+               "delete loco for address <a> if it exists");
 }
 
 
@@ -309,7 +309,7 @@ static bool speed_try()
         return false;
 
     if (strcmp(argv[1], "?") == 0) {
-        printf("%d\n", throttle->get_speed());
+        printf("%d\n", loco->get_speed());
         return true;
     }
 
@@ -318,7 +318,7 @@ static bool speed_try()
         return false;
     if (speed < DccPkt::speed_min || speed > DccPkt::speed_max)
         return false;
-    throttle->set_speed(speed);
+    loco->set_speed(speed);
     printf("OK\n");
     return true;
 }
@@ -340,7 +340,7 @@ static bool function_try()
         // return numbers of functions that are on
         bool first = true;
         for (int i = DccPkt::function_min; i <= DccPkt::function_max; i++) {
-            if (throttle->get_function(i)) {
+            if (loco->get_function(i)) {
                 if (!first)
                     printf(" ");
                 printf("%d", i);
@@ -358,7 +358,7 @@ static bool function_try()
         if (func < DccPkt::function_min || func > DccPkt::function_max)
             return false;
         if (strcmp(argv[2], "?") == 0) {
-            printf("%s\n", throttle->get_function(func) ? "ON" : "OFF");
+            printf("%s\n", loco->get_function(func) ? "ON" : "OFF");
             return true;
         }
         bool setting;
@@ -368,7 +368,7 @@ static bool function_try()
             setting = false;
         else
             return false;
-        throttle->set_function(func, setting);
+        loco->set_function(func, setting);
         printf("OK\n");
         return true;
     } else {
@@ -457,8 +457,8 @@ static bool cv_try()
             if (num_args != 3)
                 return false; // there is no ops read-bit command
             // read byte
-            throttle->read_cv(cv_num_g);
-            ops_throttle_g = throttle;
+            loco->read_cv(cv_num_g);
+            ops_loco_g = loco;
             active = &loop_ops_cv_read;
         } else if (command.mode() == DccCommand::Mode::OFF) {
             // service mode, read the old-timey way
@@ -495,7 +495,7 @@ static bool cv_try()
             // use svc mode if not already in ops mode
             if (command.mode() == DccCommand::Mode::OPS) {
                 // ops mode
-                throttle->write_cv(cv_num_g, cv_val_g);
+                loco->write_cv(cv_num_g, cv_val_g);
                 printf("OK\n");
             } else {
                 // service mode
@@ -523,7 +523,7 @@ static bool cv_try()
             // use svc mode if not already in ops mode
             if (command.mode() == DccCommand::Mode::OPS) {
                 // ops mode
-                throttle->write_bit(cv_num_g, cv_bit_g, cv_val_g);
+                loco->write_bit(cv_num_g, cv_bit_g, cv_val_g);
                 printf("OK\n");
             } else {
                 // service mode
@@ -836,10 +836,10 @@ static bool loop_ops_cv_read()
     bool result;
     uint8_t value;
 
-    // In ops mode, it is the throttle that knows when it is done.
-    // XXX This assumes only one throttle doing an ops mode op at once.
-    assert(ops_throttle_g != nullptr);
-    if (!ops_throttle_g->ops_done(result, value))
+    // In ops mode, it is the loco that knows when it is done.
+    // XXX This assumes only one loco doing an ops mode op at once.
+    assert(ops_loco_g != nullptr);
+    if (!ops_loco_g->ops_done(result, value))
         return true; // keep going
 
     uint32_t op_ms = usec_to_msec(time_us_64() - start_us);
@@ -858,7 +858,7 @@ static bool loop_ops_cv_read()
         printf("\n");
     }
 
-    ops_throttle_g = nullptr;
+    ops_loco_g = nullptr;
 
     return false; // done!
 }

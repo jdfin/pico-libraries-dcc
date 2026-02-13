@@ -9,7 +9,7 @@
 #include "dbg_gpio.h" // misc/include
 #include "dcc_command.h"
 #include "dcc_pkt.h"
-#include "dcc_throttle.h"
+#include "dcc_loco.h"
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "hardware/irq.h"
@@ -238,11 +238,11 @@ void DccBitstream::next_bit() // called in interrupt context
                         }
                     }
                     // _current2 changes at the end of the preamble
-                    DccThrottle *throttle = _current2.get_throttle();
-                    if (throttle != nullptr) {
+                    DccLoco *loco = _current2.get_loco();
+                    if (loco != nullptr) {
                         const RailComMsg *msg;
                         int msg_cnt = _railcom.get_ch2_msgs(msg);
-                        throttle->railcom(msg, msg_cnt);
+                        loco->railcom(msg, msg_cnt);
                     }
                 }
             }

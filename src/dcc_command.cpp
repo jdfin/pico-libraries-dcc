@@ -10,7 +10,7 @@
 #include "dcc_adc.h"
 #include "dcc_bitstream.h"
 #include "dcc_pkt.h"
-#include "dcc_throttle.h"
+#include "dcc_loco.h"
 #include "hardware/uart.h"
 
 
@@ -24,7 +24,7 @@ DccCommand::DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc &adc,
     _adc(adc),
     _mode(Mode::OFF),
     _mode_svc(ModeSvc::NONE),
-    _next_throttle(_throttles.begin()),
+    _next_loco(_locos.begin()),
     _svc_status(ERROR),
     _svc_status_next(ERROR),
     _svc_cmd_step(SvcCmdStep::NONE),
@@ -51,11 +51,11 @@ DccCommand::DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc &adc,
 
 DccCommand::~DccCommand()
 {
-    for (DccThrottle *t : _throttles) {
-        _throttles.remove(t);
+    for (DccLoco *t : _locos) {
+        _locos.remove(t);
         delete t;
     }
-    _next_throttle = _throttles.begin();
+    _next_loco = _locos.begin();
 }
 
 
@@ -202,15 +202,15 @@ void DccCommand::get_packet(DccPkt2 &pkt2) // called in interrupt context
 
 void DccCommand::get_packet_ops(DccPkt2 &pkt2) // called in interrupt context
 {
-    if (_next_throttle == _throttles.end()) {
-        // XXX no throttles - return an idle packet
+    if (_next_loco == _locos.end()) {
+        // XXX no locos - return an idle packet
         // XXX how did we get into ops mode?
         assert(false);
     } else {
-        pkt2.set((*_next_throttle)->next_packet(), *_next_throttle);
-        _next_throttle++;
-        if (_next_throttle == _throttles.end())
-            _next_throttle = _throttles.begin();
+        pkt2.set((*_next_loco)->next_packet(), *_next_loco);
+        _next_loco++;
+        if (_next_loco == _locos.end())
+            _next_loco = _locos.begin();
     }
 }
 
@@ -511,13 +511,13 @@ void DccCommand::get_packet_svc_read_bit(DccPkt2 &pkt2) // called in interrupt c
 } // void DccCommand::get_packet_svc_read_bit(DccPkt2 &pkt2)
 
 
-DccThrottle *DccCommand::find_throttle(int address)
+DccLoco *DccCommand::find_loco(int address)
 {
     if (address < DccPkt::address_min || address > DccPkt::address_max) {
         return nullptr;
     }
 
-    for (DccThrottle *t : _throttles)
+    for (DccLoco *t : _locos)
         if (t->get_address() == address)
             return t;
 
@@ -526,67 +526,67 @@ DccThrottle *DccCommand::find_throttle(int address)
 }
 
 
-DccThrottle *DccCommand::create_throttle(int address)
+DccLoco *DccCommand::create_loco(int address)
 {
     if (address < DccPkt::address_min || address > DccPkt::address_max) {
         return nullptr;
     }
 
-    DccThrottle *throttle = find_throttle(address);
-    if (throttle == nullptr) {
-        throttle = new DccThrottle(address);
-        _throttles.push_back(throttle);
-        restart_throttles();
+    DccLoco *loco = find_loco(address);
+    if (loco == nullptr) {
+        loco = new DccLoco(address);
+        _locos.push_back(loco);
+        restart_locos();
     }
 
-    return throttle;
+    return loco;
 }
 
 
-DccThrottle *DccCommand::delete_throttle(DccThrottle *throttle)
+DccLoco *DccCommand::delete_loco(DccLoco *loco)
 {
-    _throttles.remove(throttle);
-    delete throttle;
-    restart_throttles();
-    return *_throttles.begin();
+    _locos.remove(loco);
+    delete loco;
+    restart_locos();
+    return *_locos.begin();
 }
 
 
-DccThrottle *DccCommand::delete_throttle(int address)
+DccLoco *DccCommand::delete_loco(int address)
 {
-    for (DccThrottle *throttle : _throttles) {
-        if (throttle->get_address() == address) {
-            delete_throttle(throttle);
-            return *_throttles.begin();
+    for (DccLoco *loco : _locos) {
+        if (loco->get_address() == address) {
+            delete_loco(loco);
+            return *_locos.begin();
         }
     }
     // not found
-    return *_throttles.begin();
+    return *_locos.begin();
 }
 
 
-void DccCommand::restart_throttles()
+void DccCommand::restart_locos()
 {
-    _throttles.sort([](const DccThrottle *a, const DccThrottle *b) {
+    _locos.sort([](const DccLoco *a, const DccLoco *b) {
         return a->get_address() < b->get_address();
     });
 
-    for (DccThrottle *t : _throttles) {
+    for (DccLoco *t : _locos) {
         t->restart();
     }
 
-    _next_throttle = _throttles.begin();
+    _next_loco = _locos.begin();
 }
 
 
 void DccCommand::show()
 {
-    if (_throttles.empty()) {
-        printf("no throttles\n");
+    if (_locos.empty()) {
+        printf("no locos\n");
     } else {
-        for (DccThrottle *throttle : _throttles) {
-            printf("throttle:\n");
-            throttle->show();
+        for (DccLoco *loco : _locos) {
+            printf("loco:\n");
+            loco->show();
         }
     }
 }

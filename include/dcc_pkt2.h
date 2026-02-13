@@ -7,32 +7,32 @@
 // DccPkt2 knows:
 //   packet data (currently in DccPkt)
 //   overall length (in DccPkt)
-//   sending throttle
+//   sending loco
 //
 // The objective is for DccBitstream to get one of these to send a packet, and
-// if a (RailCom) response is received, to be able to notify the throttle of
-// the response.
+// if a (RailCom) response is received, to be able to notify the loco of the
+// response.
 //
 // A longer-term objective is to refactor DccPkt so it is not bit-twiddling so
 // much, and simply encodes and decodes as packets are sent and received.
 
-class DccThrottle;
+class DccLoco;
 
 class DccPkt2
 {
 
 public:
 
-    DccPkt2() : _pkt(), _throttle(nullptr)
+    DccPkt2() : _pkt(), _loco(nullptr)
     {
     }
 
-    DccPkt2(const DccPkt &pkt, DccThrottle *throttle = nullptr) :
-        _pkt(pkt), _throttle(throttle)
+    DccPkt2(const DccPkt &pkt, DccLoco *loco = nullptr) :
+        _pkt(pkt), _loco(loco)
     {
     }
 
-    // Change the packet and throttle.
+    // Change the packet and loco.
     // Hopefully these go away.
 
     void set_pkt(DccPkt pkt)
@@ -40,20 +40,20 @@ public:
         _pkt = pkt;
     }
 
-    void set_throttle(DccThrottle *throttle)
+    void set_loco(DccLoco *loco)
     {
-        _throttle = throttle;
+        _loco = loco;
     }
 
-    void set(DccPkt pkt, DccThrottle *throttle = nullptr)
+    void set(DccPkt pkt, DccLoco *loco = nullptr)
     {
         _pkt = pkt;
-        _throttle = throttle;
+        _loco = loco;
     }
 
-    DccThrottle *get_throttle() const
+    DccLoco *get_loco() const
     {
-        return _throttle;
+        return _loco;
     }
 
     // length, including address, instruction, check byte
@@ -83,6 +83,6 @@ private:
 
     DccPkt _pkt;
 
-    DccThrottle *_throttle;
+    DccLoco *_loco;
 
 }; // class DccPkt2

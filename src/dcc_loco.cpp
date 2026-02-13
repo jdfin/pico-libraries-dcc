@@ -1,4 +1,4 @@
-#include "dcc_throttle.h"
+#include "dcc_loco.h"
 
 #include <cassert>
 #include <cstdint>
@@ -10,7 +10,7 @@
 #include "hardware/timer.h"
 #include "railcom_msg.h"
 
-DccThrottle::DccThrottle(int address) :
+DccLoco::DccLoco(int address) :
     _seq(0),
     _pkt_last(nullptr),
     _read_cv_cnt(0),
@@ -26,16 +26,16 @@ DccThrottle::DccThrottle(int address) :
     set_address(address);
 }
 
-DccThrottle::~DccThrottle()
+DccLoco::~DccLoco()
 {
 }
 
-int DccThrottle::get_address() const
+int DccLoco::get_address() const
 {
     return _pkt_speed.get_address();
 }
 
-void DccThrottle::set_address(int address)
+void DccLoco::set_address(int address)
 {
     _pkt_speed.set_address(address);
     _pkt_func_0.set_address(address);
@@ -66,18 +66,18 @@ void DccThrottle::set_address(int address)
     _seq = 0;
 }
 
-int DccThrottle::get_speed() const
+int DccLoco::get_speed() const
 {
     return _pkt_speed.get_speed();
 }
 
-void DccThrottle::set_speed(int speed)
+void DccLoco::set_speed(int speed)
 {
     _pkt_speed.set_speed(speed);
     _seq &= ~1; // back up one if a function packet is next
 }
 
-bool DccThrottle::get_function(int num) const
+bool DccLoco::get_function(int num) const
 {
     assert(DccPkt::function_min <= num && num <= DccPkt::function_max);
 
@@ -119,7 +119,7 @@ bool DccThrottle::get_function(int num) const
     }
 }
 
-void DccThrottle::set_function(int num, bool on)
+void DccLoco::set_function(int num, bool on)
 {
     assert(DccPkt::function_min <= num && num <= DccPkt::function_max);
 
@@ -172,7 +172,7 @@ void DccThrottle::set_function(int num, bool on)
 
 // ops mode cv access
 
-void DccThrottle::read_cv(int cv_num)
+void DccLoco::read_cv(int cv_num)
 {
     _pkt_read_cv.set_cv(cv_num);
     _ops_cv_done = false;
@@ -181,7 +181,7 @@ void DccThrottle::read_cv(int cv_num)
     _read_cv_cnt = read_cv_send_cnt + 1;
 }
 
-void DccThrottle::write_cv(int cv_num, uint8_t cv_val)
+void DccLoco::write_cv(int cv_num, uint8_t cv_val)
 {
     _pkt_write_cv.set_cv(cv_num, cv_val);
     _ops_cv_done = false;
@@ -189,7 +189,7 @@ void DccThrottle::write_cv(int cv_num, uint8_t cv_val)
     _write_cv_cnt = write_cv_send_cnt;
 }
 
-void DccThrottle::write_bit(int cv_num, int bit_num, int bit_val)
+void DccLoco::write_bit(int cv_num, int bit_num, int bit_val)
 {
     _pkt_write_bit.set_cv_bit(cv_num, bit_num, bit_val);
     _ops_cv_done = false;
@@ -197,7 +197,7 @@ void DccThrottle::write_bit(int cv_num, int bit_num, int bit_val)
     _write_bit_cnt = write_bit_send_cnt;
 }
 
-bool DccThrottle::ops_done(bool &result, uint8_t &value)
+bool DccLoco::ops_done(bool &result, uint8_t &value)
 {
     if (!_ops_cv_done)
         return false;
@@ -218,7 +218,7 @@ bool DccThrottle::ops_done(bool &result, uint8_t &value)
 // 14. Speed    15. F45-F52
 // 16. Speed    17. F53-F60
 // 18. Speed    19. F61-F68
-DccPkt DccThrottle::next_packet()
+DccPkt DccLoco::next_packet()
 {
     assert(0 <= _seq && _seq < seq_max);
 
@@ -304,9 +304,9 @@ DccPkt DccThrottle::next_packet()
 }
 
 // This is called (at interrupt level) if any railcom channel2 messages are
-// received in the cutout following a DCC message from this throttle.
+// received in the cutout following a DCC message from this loco.
 
-void DccThrottle::railcom(const RailComMsg *const msg, int msg_cnt) // called in interrupt context
+void DccLoco::railcom(const RailComMsg *const msg, int msg_cnt) // called in interrupt context
 {
     constexpr int verbosity = 0;
 
@@ -407,9 +407,9 @@ void DccThrottle::railcom(const RailComMsg *const msg, int msg_cnt) // called in
         }
     }
 
-} // void DccThrottle::railcom(const RailComMsg *msg, int msg_cnt)
+} // void DccLoco::railcom(const RailComMsg *msg, int msg_cnt)
 
-void DccThrottle::show()
+void DccLoco::show()
 {
     char buf[80];
     printf("%s\n", _pkt_speed.show(buf, sizeof(buf)));
