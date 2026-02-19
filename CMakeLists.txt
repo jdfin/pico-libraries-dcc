@@ -29,5 +29,6 @@ target_link_libraries(dcc INTERFACE
     misc
 )
 
-add_subdirectory(dcc_spy)
+add_subdirectory(dcc_bit_hist)
 add_subdirectory(dcc_cmd)
+add_subdirectory(dcc_spy)

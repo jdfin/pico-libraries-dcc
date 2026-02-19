@@ -965,6 +965,57 @@ uint8_t DccPktFunc9::get_funcs() const
 
 //----------------------------------------------------------------------------
 
+DccPktSetAdrs::DccPktSetAdrs(int adrs, int adrs_new)
+{
+    assert(address_min <= adrs && adrs <= address_max);
+    assert(address_min <= adrs_new && adrs_new <= address_max);
+
+    refresh(adrs, adrs_new);
+}
+
+int DccPktSetAdrs::set_address(int adrs)
+{
+    assert(address_min <= adrs && adrs <= address_max);
+
+    refresh(adrs, get_adrs_new());
+    return get_address_size();
+}
+
+void DccPktSetAdrs::set_adrs_new(int adrs_new)
+{
+    assert(address_min <= adrs_new && adrs_new <= address_max);
+
+    int idx = get_address_size(); // skip address (1 or 2 bytes)
+    _msg[idx++] = 0xf4;
+    _msg[idx++] = 0xc0 | ((adrs_new >> 8) & 0x3f); // hi 6 bits
+    _msg[idx++] = adrs_new & 0xff;                 // lo 8 bits
+    _msg_len = idx + 1; // total (with xor) 4 or 5 bytes
+    set_xor();
+}
+
+void DccPktSetAdrs::refresh(int adrs, int adrs_new)
+{
+    assert(address_min <= adrs && adrs <= address_max);
+    assert(address_min <= adrs_new && adrs_new <= address_max);
+
+    (void)DccPkt::set_address(adrs); // insert address (1 or 2 bytes)
+    set_adrs_new(adrs_new);          // insert new address
+}
+
+int DccPktSetAdrs::get_adrs_new() const
+{
+    int idx = get_address_size(); // skip address (1 or 2 bytes)
+    assert(_msg[idx] == 0xf4);    // check instruction
+    idx++;                        // and skip it
+    int cv17 = _msg[idx++];
+    int cv18 = _msg[idx];
+    int adrs_new = ((cv17 & 0x3f) << 8) | cv18;
+    assert(address_min <= adrs_new && adrs_new <= address_max);
+    return adrs_new;
+}
+
+//----------------------------------------------------------------------------
+
 DccPktReadCv::DccPktReadCv(int adrs, int cv_num)
 {
     assert(address_min <= adrs && adrs <= address_max);

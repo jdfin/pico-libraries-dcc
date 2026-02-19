@@ -221,8 +221,11 @@ static void update_display(const DccPkt &msg)
 
 #endif // INCLUDE_DISPLAY
 
-static bool pkt_ignore(const uint8_t *pkt, int pkt_len)
+static bool pkt_ignore([[maybe_unused]] const uint8_t *pkt, [[maybe_unused]] int pkt_len)
 {
+#if 1
+    return false;
+#else
     // ignore packets that are not multi-function decoder speed or function messages
     DccPkt msg(pkt, pkt_len);
 
@@ -235,6 +238,7 @@ static bool pkt_ignore(const uint8_t *pkt, int pkt_len)
            || msg.decode_func_13(f)    //
            || msg.decode_func_21(f)    //
            || msg.decode_func_29(f);
+#endif
 }
 
 

@@ -1,8 +1,6 @@
 
 add_compile_options(-Wall -Wextra -Werror)
 
-# dcc_cmd
-
 add_executable(dcc_cmd
     dcc_cmd.cpp
 )

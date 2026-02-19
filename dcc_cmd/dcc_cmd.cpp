@@ -18,8 +18,8 @@
 #include "dcc_command.h"
 #include "dcc_cv.h"
 #include "dcc_gpio_cfg.h"
-#include "dcc_pkt.h"
 #include "dcc_loco.h"
+#include "dcc_pkt.h"
 #include "railcom.h"
 
 // Some commands, mainly service-mode reads and writes, take a while (a few
@@ -655,17 +655,14 @@ static void verbosity_help(bool verbose)
 //  Here:
 //      set address_g with address to write (long or short)
 //      if short:
-//          start write of address here:        cv_num_g = 1,  cv_val_g =
-//          address_g
+//          start write of address here:        cv_num_g = 1,  cv_val_g = address_g
 //      if long:
-//          start write of address_lo here:     cv_num_g = 18, cv_val_g =
-//          address_g & 0xff
+//          start write of address_lo here:     cv_num_g = 18, cv_val_g = address_g & 0xff
 //  In loop_svc_address_write:
 //      if cv_num_g is 1 (address):
 //          start clearing of cv29[5]:          cv_num_g = 29, cv_val_g = 0
 //      else if cv_num_g is 18 (address_lo):
-//          start write of address_hi:          cv_num_g = 17, cv_val_g =
-//          (address >> 8) | 0xc0
+//          start write of address_hi:          cv_num_g = 17, cv_val_g = (address >> 8) | 0xc0
 //      else if cv_num_g is 17 (address_hi):
 //          start setting of cv29[5]:           cv_num_g = 29, cv_val_g = 1
 //      else if cv_num_g is 29 (config):
@@ -691,6 +688,18 @@ static bool address_try()
 
     if (argv.argc() != 2)
         return false;
+
+    if (command.mode() == DccCommand::Mode::OPS) {
+        // Use DccPktSetAdrs to set address
+        int address;
+        if (!str_to_int(argv[1], &address))
+            return false;
+        if (address < DccPkt::address_min || address > DccPkt::address_max)
+            return false;
+        loco->set_adrs_new(address);
+        printf("OK\n");
+        return true;
+    }
 
     if (command.mode() != DccCommand::Mode::OFF)
         return false;

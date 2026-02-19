@@ -49,6 +49,7 @@ public:
 #if (DCC_FUNC_MAX >= 61)
         Func61,
 #endif
+        OpsWriteAdrs,
         OpsRead1Cv,
         OpsRead4Cv,
         OpsWriteCv,
@@ -398,6 +399,25 @@ typedef DccPktFuncHi<0xdb, 53> DccPktFunc53;
 // 2.3.6.11 - F61-F68 Function Control
 typedef DccPktFuncHi<0xdc, 61> DccPktFunc61;
 #endif
+
+// 2.3.7.2 - Configuration Variable Access - Short Form (write)
+class DccPktSetAdrs : public DccPkt
+{
+public:
+
+    DccPktSetAdrs(int adrs = 3, int adrs_new = 3);
+    virtual int set_address(int adrs) override;
+    void set_adrs_new(int adrs_new); // set new address in message
+    virtual PktType get_type() const override
+    {
+        return OpsWriteAdrs;
+    }
+
+private:
+
+    void refresh(int adrs, int adrs_new);
+    int get_adrs_new() const;
+};
 
 // 2.3.7.3 - Configuration Variable Access - Long Form (read/verify byte)
 class DccPktReadCv : public DccPkt

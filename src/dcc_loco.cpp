@@ -16,6 +16,7 @@ DccLoco::DccLoco(int address) :
     _read_cv_cnt(0),
     _write_cv_cnt(0),
     _write_bit_cnt(0),
+    _set_adrs_cnt(0),
     _ops_cv_done(false),
     _ops_cv_status(false),
     _ops_cv_val(0),
@@ -63,6 +64,7 @@ void DccLoco::set_address(int address)
     _pkt_read_cv.set_address(address);
     _pkt_write_cv.set_address(address);
     _pkt_write_bit.set_address(address);
+    _pkt_set_adrs.set_address(address);
     _seq = 0;
 }
 
@@ -197,6 +199,14 @@ void DccLoco::write_bit(int cv_num, int bit_num, int bit_val)
     _write_bit_cnt = write_bit_send_cnt;
 }
 
+void DccLoco::set_adrs_new(int adrs_new)
+{
+    _pkt_set_adrs.set_adrs_new(adrs_new);
+    _ops_cv_done = false;
+    _ops_cv_status = false;
+    _set_adrs_cnt = set_adrs_send_cnt;
+}
+
 bool DccLoco::ops_done(bool &result, uint8_t &value)
 {
     if (!_ops_cv_done)
@@ -246,6 +256,12 @@ DccPkt DccLoco::next_packet()
         _write_bit_cnt--;
         _pkt_last = &_pkt_write_bit;
         return _pkt_write_bit;
+    }
+
+    if (_set_adrs_cnt > 0) {
+        _set_adrs_cnt--;
+        _pkt_last = &_pkt_set_adrs;
+        return _pkt_set_adrs;
     }
 
     int seq = _seq;
@@ -371,22 +387,28 @@ void DccLoco::railcom(const RailComMsg *const msg, int msg_cnt) // called in int
     for (int i = 0; i < msg_cnt; i++) {
         if (msg[i].id == RailComMsg::MsgId::pom) {
             if (_read_cv_cnt > 0) {
-                assert(_write_cv_cnt == 0 && _write_bit_cnt == 0);
+                assert(_write_cv_cnt == 0 && _write_bit_cnt == 0 && _set_adrs_cnt == 0);
                 _ops_cv_done = true;
                 _ops_cv_status = true;
                 _ops_cv_val = msg[i].pom.val;
                 _read_cv_cnt = 0;
             } else if (_write_cv_cnt > 0) {
-                assert(_write_bit_cnt == 0);
+                assert(_write_bit_cnt == 0 && _set_adrs_cnt == 0);
                 _ops_cv_done = true;
                 _ops_cv_status = true;
                 _ops_cv_val = msg[i].pom.val;
                 _write_cv_cnt = 0;
             } else if (_write_bit_cnt > 0) {
+                assert(_set_adrs_cnt == 0);
                 _ops_cv_done = true;
                 _ops_cv_status = true;
                 _ops_cv_val = msg[i].pom.val;
                 _write_bit_cnt = 0;
+            } else if (_set_adrs_cnt > 0) {
+                _ops_cv_done = true;
+                _ops_cv_status = true;
+                //_ops_cv_val = msg[i].pom.val;
+                _set_adrs_cnt = 0;
             }
         } else if (msg[i].id == RailComMsg::MsgId::dyn) {
             if (msg[i].dyn.id == RailComSpec::DynId::dyn_speed_1) {

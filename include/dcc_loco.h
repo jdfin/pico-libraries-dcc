@@ -28,6 +28,8 @@ public:
     void write_cv(int cv_num, uint8_t cv_val);
     void write_bit(int cv_num, int bit_num, int bit_val);
 
+    void set_adrs_new(int adrs_new);
+
     bool ops_done(bool &result, uint8_t &value);
 
     DccPkt next_packet();
@@ -107,6 +109,10 @@ private:
     DccPktWriteBit _pkt_write_bit;
     static const int write_bit_send_cnt = 5; // how many times to send it
     int _write_bit_cnt; // times left to send it (5, 4, ... 1, 0)
+
+    DccPktSetAdrs _pkt_set_adrs;
+    static const int set_adrs_send_cnt = 5; // how many times to send it
+    int _set_adrs_cnt; // times left to send it (5, 4, ... 1, 0)
 
     bool _ops_cv_done;
     bool _ops_cv_status;
