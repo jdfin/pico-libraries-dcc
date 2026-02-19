@@ -243,7 +243,7 @@ static bool pkt_ignore([[maybe_unused]] const uint8_t *pkt, [[maybe_unused]] int
 
 
 static void pkt_recv(const uint8_t *pkt, int pkt_len, int preamble_len,
-                     uint64_t start_us, int bad_cnt)
+                     uint64_t start_us, [[maybe_unused]] int bad_cnt)
 {
     static uint64_t last_pkt_us = 0;
 
@@ -269,8 +269,12 @@ static void pkt_recv(const uint8_t *pkt, int pkt_len, int preamble_len,
         char buf[80];
         printf(" %s", msg.show(buf, sizeof(buf)));
 
-        if (bad_cnt != 0)
-            printf(" bad_cnt=%d", bad_cnt);
+        // If the command station is using railcom, bad_cnt is always nonzero.
+        // It's tricky to recognize truly bad bits in DccBit in that case, and
+        // the extra complexity doesn't seem worth it.
+
+        //if (bad_cnt != 0)
+            //printf(" bad_cnt=%d", bad_cnt);
 
         printf("\n");
 
