@@ -182,7 +182,7 @@ int RailComMsg::show(char *buf, int buf_len) const
 
     b += snprintf(b, e - b, "[");
 
-    b += snprintf(b, e - b, id_name());
+    b += snprintf(b, e - b, "%s", id_name());
 
     if (id == MsgId::ack || id == MsgId::nak || id == MsgId::bsy) {
         // nothing more to print
