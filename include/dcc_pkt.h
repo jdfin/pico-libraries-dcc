@@ -65,11 +65,6 @@ public:
         Unimplemented,
     };
 
-    virtual PktType get_type() const
-    {
-        return Invalid;
-    }
-
     void msg_len(int new_len);
 
     int msg_len() const
@@ -174,10 +169,6 @@ class DccPktIdle : public DccPkt
 public:
 
     DccPktIdle();
-    virtual PktType get_type() const override
-    {
-        return Idle;
-    }
 };
 
 // 2.3.1.1 - Decoder Control
@@ -186,10 +177,6 @@ class DccPktReset : public DccPkt
 public:
 
     DccPktReset();
-    virtual PktType get_type() const override
-    {
-        return Reset;
-    }
 };
 
 // 2.3.2.1 - 128 Speed Step Control
@@ -408,10 +395,6 @@ public:
     DccPktSetAdrs(int adrs = 3, int adrs_new = 3);
     virtual int set_address(int adrs) override;
     void set_adrs_new(int adrs_new); // set new address in message
-    virtual PktType get_type() const override
-    {
-        return OpsWriteAdrs;
-    }
 
 private:
 
@@ -427,10 +410,6 @@ public:
     DccPktReadCv(int adrs = 3, int cv_num = 1);
     virtual int set_address(int adrs) override;
     void set_cv(int cv_num); // set cv num in message
-    virtual PktType get_type() const override
-    {
-        return OpsRead1Cv;
-    }
 
 private:
 
@@ -449,10 +428,6 @@ public:
     DccPktWriteCv(int adrs = 3, int cv_num = 1, uint8_t cv_val = 0);
     virtual int set_address(int adrs) override;
     void set_cv(int cv_num, uint8_t cv_val); // set in message
-    virtual PktType get_type() const override
-    {
-        return OpsWriteCv;
-    }
 
 private:
 
@@ -469,10 +444,6 @@ public:
     DccPktWriteBit(int adrs = address_default, int cv_num = 1, int bit_num = 0, int bit_val = 0);
     virtual int set_address(int adrs) override;
     void set_cv_bit(int cv_num, int bit_num, int bit_val);
-    virtual PktType get_type() const override
-    {
-        return OpsWriteBit;
-    }
 
 private:
 

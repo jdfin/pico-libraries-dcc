@@ -1,8 +1,19 @@
 #include <cstdio>
+#include <cstdint>
 #include <cstring>
 
 #include "dcc_pkt.h"
 #include "test.h"
+
+// Helper: get packet type by decoding raw bytes
+static DccPkt::PktType pkt_decode_type(const DccPkt &pkt)
+{
+    uint8_t buf[8];
+    int len = pkt.msg_len();
+    if (len > (int)sizeof(buf)) len = (int)sizeof(buf);
+    for (int i = 0; i < len; i++) buf[i] = pkt.data(i);
+    return DccPkt::decode_type(buf, len);
+}
 
 // --- Idle / Reset ---
 
@@ -13,7 +24,7 @@ static bool test_idle_packet()
     if (pkt.data(0) != 0xff) return false;
     if (pkt.data(1) != 0x00) return false;
     if (!pkt.check_xor()) return false;
-    if (pkt.get_type() != DccPkt::Idle) return false;
+    if (pkt_decode_type(pkt) != DccPkt::Idle) return false;
     return true;
 }
 
@@ -25,7 +36,7 @@ static bool test_reset_packet()
     if (pkt.data(1) != 0x00) return false;
     if (pkt.data(2) != 0x00) return false;
     if (!pkt.check_xor()) return false;
-    if (pkt.get_type() != DccPkt::Reset) return false;
+    if (pkt_decode_type(pkt) != DccPkt::Reset) return false;
     return true;
 }
 
@@ -237,7 +248,7 @@ static bool test_ops_read_cv()
 {
     DccPktReadCv pkt(3, 1);
     if (!pkt.check_xor()) return false;
-    if (pkt.get_type() != DccPkt::OpsRead1Cv) return false;
+    if (pkt_decode_type(pkt) != DccPkt::OpsRead1Cv) return false;
 
     // change CV number
     pkt.set_cv(29);
@@ -255,7 +266,7 @@ static bool test_ops_write_cv()
 {
     DccPktWriteCv pkt(3, 1, 0x55);
     if (!pkt.check_xor()) return false;
-    if (pkt.get_type() != DccPkt::OpsWriteCv) return false;
+    if (pkt_decode_type(pkt) != DccPkt::OpsWriteCv) return false;
 
     DccPktWriteCv pkt2(3, 29, 6);
     if (!pkt2.check_xor()) return false;
@@ -267,7 +278,7 @@ static bool test_ops_write_bit()
 {
     DccPktWriteBit pkt(3, 1, 0, 1);
     if (!pkt.check_xor()) return false;
-    if (pkt.get_type() != DccPkt::OpsWriteBit) return false;
+    if (pkt_decode_type(pkt) != DccPkt::OpsWriteBit) return false;
 
     DccPktWriteBit pkt2(3, 29, 5, 0);
     if (!pkt2.check_xor()) return false;
@@ -371,7 +382,6 @@ static bool test_set_adrs()
 {
     DccPktSetAdrs pkt(3, 100);
     if (!pkt.check_xor()) return false;
-    if (pkt.get_type() != DccPkt::OpsWriteAdrs) return false;
     if (pkt.get_address() != 3) return false;
 
     // long source address

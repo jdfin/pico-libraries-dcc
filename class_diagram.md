@@ -10,7 +10,6 @@ classDiagram
         #uint8_t _msg[8]
         #int _msg_len
         +DccPkt(msg, msg_len)
-        +get_type() PktType
         +get_address() int
         +set_address(adrs) int
         +set_xor()
@@ -24,12 +23,10 @@ classDiagram
 
     class DccPktIdle {
         +DccPktIdle()
-        +get_type() PktType
     }
 
     class DccPktReset {
         +DccPktReset()
-        +get_type() PktType
     }
 
     class DccPktSpeed128 {
@@ -198,12 +195,11 @@ classDiagram
         -DccPkt _pkt
         -DccLoco* _loco
         +DccPkt2(pkt, loco)
-        +set_pkt(pkt)
-        +set_loco(loco)
+        +set(pkt, loco)
         +get_loco() DccLoco*
         +len() int
         +data(idx) uint8_t
-        +get_type() PktType
+        +show(buf, buf_len) char*
     }
 
     class DccAdc {

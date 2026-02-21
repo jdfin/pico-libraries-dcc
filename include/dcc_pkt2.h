@@ -61,11 +61,6 @@ public:
         return _pkt.show(buf, buf_len);
     }
 
-    DccPkt::PktType get_type() const
-    {
-        return _pkt.get_type();
-    }
-
 private:
 
     DccPkt _pkt;
