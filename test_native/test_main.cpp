@@ -10,6 +10,10 @@ extern const int tests_dcc_pkt_cnt;
 extern const Test tests_dcc_bit[];
 extern const int tests_dcc_bit_cnt;
 
+// Defined in test_dcc_command.cpp
+extern const Test tests_dcc_command[];
+extern const int tests_dcc_command_cnt;
+
 static int run_suite(const char *suite_name, const Test *tests, int count)
 {
     int fail = 0;
@@ -30,6 +34,7 @@ int main()
     int fail = 0;
     fail += run_suite("dcc_pkt", tests_dcc_pkt, tests_dcc_pkt_cnt);
     fail += run_suite("dcc_bit", tests_dcc_bit, tests_dcc_bit_cnt);
+    fail += run_suite("dcc_command", tests_dcc_command, tests_dcc_command_cnt);
 
     printf("=== %s ===\n", fail == 0 ? "ALL PASSED" : "FAILURES");
     return fail == 0 ? 0 : 1;

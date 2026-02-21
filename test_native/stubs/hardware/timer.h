@@ -10,3 +10,8 @@ inline uint64_t time_us_64()
                steady_clock::now().time_since_epoch())
         .count();
 }
+
+inline uint32_t time_us_32()
+{
+    return (uint32_t)time_us_64();
+}

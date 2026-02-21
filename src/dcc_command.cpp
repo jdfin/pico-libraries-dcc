@@ -51,8 +51,9 @@ DccCommand::DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc &adc,
 
 DccCommand::~DccCommand()
 {
-    for (DccLoco *t : _locos) {
-        _locos.remove(t);
+    while (!_locos.empty()) {
+        DccLoco *t = _locos.front();
+        _locos.pop_front();
         delete t;
     }
     _next_loco = _locos.begin();
