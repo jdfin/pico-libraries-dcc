@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>
 
+#include "dbg_gpio.h"
 #include "hardware/adc.h"
 
 

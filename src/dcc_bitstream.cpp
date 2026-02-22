@@ -12,9 +12,7 @@
 #include "dcc_loco.h"
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
-#include "hardware/irq.h"
 #include "hardware/pwm.h"
-#include "hardware/sync.h"
 #include "hardware/uart.h"
 #include "pwm_irq_mux.h" // misc/include
 #include "railcom.h"

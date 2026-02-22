@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <cstring>
 
 #include "hardware/uart.h"
 #include "railcom_msg.h"

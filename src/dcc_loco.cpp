@@ -9,6 +9,7 @@
 #include "dcc_pkt.h"
 #include "hardware/timer.h"
 #include "railcom_msg.h"
+#include "railcom_spec.h"
 
 DccLoco::DccLoco(int address) :
     _seq(0),

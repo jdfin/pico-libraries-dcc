@@ -1,12 +1,10 @@
 #pragma once
 
-#include "buf_log.h"
-#include "dcc_pkt.h"
 #include "dcc_pkt2.h"
 #include "dcc_spec.h"
 #include "hardware/pwm.h"
 #include "hardware/uart.h"
-#include "pico/stdlib.h"
+#include "pico/types.h"
 #include "railcom.h"
 
 class DccCommand;

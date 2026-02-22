@@ -1,16 +1,19 @@
 #include "dcc_command.h"
 
 #include <cassert>
-#include <cctype>
 #include <cstdint>
 #include <cstdio>
 #include <list>
 
 #include "buf_log.h"
+#include "dbg_gpio.h"
 #include "dcc_adc.h"
 #include "dcc_bitstream.h"
-#include "dcc_pkt.h"
 #include "dcc_loco.h"
+#include "dcc_pkt.h"
+#include "dcc_spec.h"
+#include "hardware/gpio.h"
+#include "hardware/timer.h"
 #include "hardware/uart.h"
 
 

@@ -1,9 +1,12 @@
 #pragma once
 
 #include <cstdint>
+#include <cstdio>
 #include <list>
 
+#include "buf_log.h"
 #include "dcc_bitstream.h"
+#include "dcc_pkt.h"
 #include "dcc_pkt2.h"
 #include "dcc_loco.h"
 #include "hardware/uart.h"
