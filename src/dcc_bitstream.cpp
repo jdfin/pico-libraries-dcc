@@ -6,7 +6,6 @@
 #include <cstdio>
 
 #include "buf_log.h"
-#include "dbg_gpio.h" // misc/include
 #include "dcc_command.h"
 #include "dcc_pkt.h"
 #include "dcc_loco.h"
@@ -19,9 +18,6 @@
 
 #define LOG_DCC 1
 #define LOG_RAILCOM 1
-
-// gpio to assert while in the next_bit function
-int DccBitstream::dbg_next_bit __attribute((weak)) = -1;
 
 // PWM usage:
 //
@@ -83,20 +79,12 @@ DccBitstream::DccBitstream(DccCommand &command, int sig_gpio, int pwr_gpio,
     assert(pwm_gpio_to_channel(pwr_gpio) == (1 - _channel));
 
     gpio_set_function(pwr_gpio, GPIO_FUNC_PWM);
-
-    dbg_init();
 }
 
 
 DccBitstream::~DccBitstream()
 {
     stop(); // track power off, pwm output low
-}
-
-
-void DccBitstream::dbg_init()
-{
-    DbgGpio::init(dbg_next_bit);
 }
 
 
@@ -194,8 +182,6 @@ void DccBitstream::stop()
 //
 void DccBitstream::next_bit() // called in interrupt context
 {
-    DbgGpio g(dbg_next_bit);
-
     if (_byte_num == byte_num_cutout) {
         // doing railcom cutout
         if (_bit_num == 4) {

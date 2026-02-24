@@ -6,7 +6,6 @@
 #include <list>
 
 #include "buf_log.h"
-#include "dbg_gpio.h"
 #include "dcc_adc.h"
 #include "dcc_bitstream.h"
 #include "dcc_loco.h"
@@ -15,10 +14,6 @@
 #include "hardware/gpio.h"
 #include "hardware/timer.h"
 #include "hardware/uart.h"
-
-
-// gpio to assert while in the next_bit function
-int DccCommand::dbg_get_packet __attribute((weak)) = -1;
 
 
 DccCommand::DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc &adc,
@@ -47,8 +42,6 @@ DccCommand::DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc &adc,
         gpio_set_dir(slp_gpio, GPIO_OUT);
     }
     ack_reset();
-    dbg_init();
-    dbg_times_reset();
 }
 
 
@@ -60,12 +53,6 @@ DccCommand::~DccCommand()
         delete t;
     }
     _next_loco = _locos.begin();
-}
-
-
-void DccCommand::dbg_init()
-{
-    DbgGpio::init(dbg_get_packet);
 }
 
 
@@ -176,9 +163,6 @@ void DccCommand::loop() // called in interrupt context
 
 void DccCommand::get_packet(DccPkt2 &pkt2) // called in interrupt context
 {
-    DbgGpio d(dbg_get_packet);
-    uint32_t start_us = time_us_32();
-
     if (_mode == Mode::OPS) {
         get_packet_ops(pkt2);
     } else if (_mode == Mode::SVC) {
@@ -191,19 +175,6 @@ void DccCommand::get_packet(DccPkt2 &pkt2) // called in interrupt context
             get_packet_svc_read_bit(pkt2);
         }
     }
-
-    // measure how long this function took for debug/analysis
-    uint32_t time_us = time_us_32() - start_us;
-    if (time_us < _get_packet_min_us)
-        _get_packet_min_us = time_us;
-    if (time_us > _get_packet_max_us)
-        _get_packet_max_us = time_us;
-    if (_get_packet_avg_us == 0)
-        _get_packet_avg_us = time_us * get_packet_avg_len;
-    else
-        _get_packet_avg_us =
-            (_get_packet_avg_us * (get_packet_avg_len - 1) + time_us) /
-            get_packet_avg_len;
 }
 
 

@@ -6,9 +6,9 @@
 
 #include "buf_log.h"
 #include "dcc_bitstream.h"
+#include "dcc_loco.h"
 #include "dcc_pkt.h"
 #include "dcc_pkt2.h"
-#include "dcc_loco.h"
 #include "hardware/uart.h"
 
 #undef INCLUDE_ACK_DBG
@@ -43,9 +43,15 @@ public:
         SVC,
     };
 
-    Mode mode() const { return _mode; }
+    Mode mode() const
+    {
+        return _mode;
+    }
 
-    DccAdc &adc() const { return _adc; }
+    DccAdc &adc() const
+    {
+        return _adc;
+    }
 
     // called by DccBitstream to get a packet to send
     void get_packet(DccPkt2 &pkt);
@@ -65,10 +71,19 @@ public:
         _bitstream.show_dcc(show);
         _show_acks = show;
     }
-    bool show_dcc() const { return _bitstream.show_dcc(); }
+    bool show_dcc() const
+    {
+        return _bitstream.show_dcc();
+    }
 
-    void show_railcom(bool show) { _bitstream.show_railcom(show); }
-    bool show_railcom() const { return _bitstream.show_railcom(); }
+    void show_railcom(bool show)
+    {
+        _bitstream.show_railcom(show);
+    }
+    bool show_railcom() const
+    {
+        return _bitstream.show_railcom();
+    }
 
     void show_rc_speed(bool show)
     {
@@ -206,22 +221,4 @@ private:
     void get_packet_svc_read_bit(DccPkt2 &pkt);
 
     void assert_svc_idle();
-
-    ///// Debug
-
-    // These are used to assert a GPIO on some event to trigger a scope.
-    // All default to -1 (disabled).
-    static int dbg_get_packet; // asserted for duration of get_packet()
-    static void dbg_init();    // call this after changing any from default
-
-    uint32_t _get_packet_min_us;
-    uint32_t _get_packet_max_us;
-    uint32_t _get_packet_avg_us;
-    static constexpr int get_packet_avg_len = 16;
-    void dbg_times_reset()
-    {
-        _get_packet_min_us = UINT32_MAX;
-        _get_packet_max_us = 0;
-        _get_packet_avg_us = 0;
-    }
 };

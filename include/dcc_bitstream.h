@@ -120,11 +120,4 @@ private:
 
     static void pwm_handler(void *arg); // called in interrupt context
 
-    ///// Debug
-
-    // These are used to assert a GPIO on some event to trigger a scope.
-    // All default to -1 (disabled).
-    static int dbg_next_bit;    // asserted for duration of next_bit()
-    static void dbg_init();     // call this after changing any from default
-
 }; // class DccBitstream

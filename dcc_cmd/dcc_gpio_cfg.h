@@ -34,5 +34,3 @@ uart_inst_t *const dcc_rcom_uart = uart0; // uart0
 constexpr int dcc_dbg_rcom_read_gpio = -1;
 constexpr int dcc_dbg_rcom_junk_gpio = -1;
 constexpr int dcc_dbg_rcom_short_gpio = -1;
-constexpr int dcc_dbg_bitstream_next_bit_gpio = -1;
-constexpr int dcc_dbg_command_get_packet_gpio = -1;

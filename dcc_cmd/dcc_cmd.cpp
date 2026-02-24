@@ -102,8 +102,6 @@ static uint64_t start_us = 0;
 int RailCom::dbg_read = dcc_dbg_rcom_read_gpio;
 int RailCom::dbg_junk = dcc_dbg_rcom_junk_gpio;
 int RailCom::dbg_short = dcc_dbg_rcom_short_gpio;
-int DccBitstream::dbg_next_bit = dcc_dbg_bitstream_next_bit_gpio;
-int DccCommand::dbg_get_packet = dcc_dbg_command_get_packet_gpio;
 
 
 static inline uint32_t usec_to_msec(uint64_t us)
