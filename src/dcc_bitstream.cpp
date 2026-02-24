@@ -175,9 +175,22 @@ void DccBitstream::stop()
 // in here affects the next bit, the one that will start at the next
 // interrupt.
 //
-// byte=-2 is the railcom cutout
-// byte=-1 is the packet preamble
-// then byte=0,1...msg_len-1 for the message bytes
+// This is called every 116 usec (one-bit) or 200 usec (zero-bit). The next
+// bit must be programmed in less time than that. The rest of the function
+// after that can spill over into the next bit time, but if that happens,
+// there must be time after returning such that the next interrupt can happen
+// and the next bit programmed on time.
+//
+// After programming the next bit and whatever else (e.g. getting the next
+// packet), this calls _command.loop() to let the command
+//
+// During the railcom cutout, it's still called every 116 usec (counting down
+// the cutout one-bit times), but the signal is off. This is to make it simple
+// to generate that first cutout quarter-bit.
+//
+// _byte_num = byte_num_cutout (-2) is the railcom cutout
+// _byte_num = byte_num_preamble (-1) is the packet preamble (initial value for first call)
+// then _byte_num = 0, 1, ... msg_len-1 for the message bytes
 //
 void DccBitstream::next_bit() // called in interrupt context
 {

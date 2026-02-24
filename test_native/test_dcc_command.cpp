@@ -34,7 +34,7 @@ static bool is_not_reset(DccPkt2 &pkt)
 // Stub ADC control functions (defined in stub_dcc_adc.cpp)
 extern void stub_adc_set_short_avg_ma(uint16_t val);
 extern void stub_adc_set_long_avg_ma(uint16_t val);
-extern void stub_adc_set_loop_result(bool val);
+extern void stub_adc_set_loop_result(int val);
 
 // Helper: create a DccCommand with stub ADC
 // sig_gpio=0, pwr_gpio=1 satisfies DccBitstream assertion (same slice, different channels)
@@ -49,7 +49,7 @@ struct CmdFixture {
         // Reset stub state
         stub_adc_set_short_avg_ma(0);
         stub_adc_set_long_avg_ma(100);
-        stub_adc_set_loop_result(false);
+        stub_adc_set_loop_result(0);
     }
 };
 
@@ -64,10 +64,10 @@ static void pump(DccCommand &cmd, int n)
 // Helper: inject an ACK via the stub ADC
 static void inject_ack(DccCommand &cmd)
 {
-    stub_adc_set_loop_result(true);
+    stub_adc_set_loop_result(1);
     stub_adc_set_short_avg_ma(200);
     cmd.loop();
-    stub_adc_set_loop_result(false);
+    stub_adc_set_loop_result(0);
     stub_adc_set_short_avg_ma(0);
 }
 
@@ -192,7 +192,7 @@ static bool test_svc_write_cv_no_ack()
 {
     CmdFixture f;
 
-    stub_adc_set_loop_result(false);
+    stub_adc_set_loop_result(0);
     stub_adc_set_long_avg_ma(100);
 
     f.cmd.write_cv(1, 0x42);
@@ -234,7 +234,7 @@ static bool test_svc_write_cv_with_ack()
 {
     CmdFixture f;
 
-    stub_adc_set_loop_result(false);
+    stub_adc_set_loop_result(0);
     stub_adc_set_long_avg_ma(100);
 
     f.cmd.write_cv(1, 0x42);
@@ -266,7 +266,7 @@ static bool test_svc_write_bit_no_ack()
 {
     CmdFixture f;
 
-    stub_adc_set_loop_result(false);
+    stub_adc_set_loop_result(0);
     stub_adc_set_long_avg_ma(100);
 
     f.cmd.write_bit(1, 3, 1);
@@ -308,7 +308,7 @@ static bool test_svc_read_cv_all_zeros()
 {
     CmdFixture f;
 
-    stub_adc_set_loop_result(false);
+    stub_adc_set_loop_result(0);
     stub_adc_set_long_avg_ma(100);
 
     f.cmd.read_cv(1);
@@ -361,7 +361,7 @@ static bool test_svc_read_cv_with_acks()
 {
     CmdFixture f;
 
-    stub_adc_set_loop_result(false);
+    stub_adc_set_loop_result(0);
     stub_adc_set_long_avg_ma(100);
 
     f.cmd.read_cv(1);
@@ -410,7 +410,7 @@ static bool test_svc_read_bit()
 {
     CmdFixture f;
 
-    stub_adc_set_loop_result(false);
+    stub_adc_set_loop_result(0);
     stub_adc_set_long_avg_ma(100);
 
     f.cmd.read_bit(1, 3);

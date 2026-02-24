@@ -164,10 +164,13 @@ void DccCommand::loop() // called in interrupt context
     if (_mode != Mode::SVC)
         return;
 
-    if (!_adc.loop())
-        return; // no new adc samples
+    // The adc runs at 10 KHz, so there's a new sample every 100 usec. On each
+    // DCC bit (116 or 200 usec), there should usually be at either one or two
+    // samples. But depending on the interrupt timing, maybe there can be none
+    // or more than two.
 
-    ack_check(_adc.short_avg_ma());
+    if (_adc.loop() > 0)
+        ack_check(_adc.short_avg_ma());
 }
 
 

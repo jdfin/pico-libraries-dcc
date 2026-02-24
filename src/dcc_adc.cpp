@@ -54,26 +54,33 @@ void DccAdc::stop()
 
 // When the ADC FIFO is empty, this function takes about 250 ns; when there is
 // data, about 600 ns (by one particular measurement). Note that at 10 KHz, a
-// new samples is available every 100 usec. With the rp2040 4-sample fifo,
-// that means this must be called at least every 400 usec. Calling it once per
-// DCC bit time should be fine (zeros are 200 usec). Sometimes one call will
-// get two samples, so make sure that works.
-// Return true if there was at least one sample, false if none.
-bool DccAdc::loop()
+// new sample is available every 100 usec. With the rp2040 4-sample fifo
+// (rp2350 is 8 samples), that means this must be called at least every 400
+// usec. Calling it once per DCC bit time should be fine (zeros are 200 usec).
+// Sometimes one call will get two samples, so make sure that works.
+//
+// Return number of samples read (0 or more).
+int DccAdc::loop() // called in interrupt context
 {
     DbgGpio d(_dbg_loop_gpio);
 
     if (_gpio < 0)
-        return false;
+        return 0;
 
-    bool any = false;
+    // This should be fine even if the fifo is deeper than four. (But is is
+    // related to the sample rate and DCC bit rate, so it'd be nice if it were
+    // calculated instead of being a magic number.)
+    constexpr int max_samples = 4;
 
-    while (!adc_fifo_is_empty()) {
+    int samples = 0;
 
-        any = true;
+    // adc_fifo_is_empty() and adc_fifo_get() are a few machine instructions each
+
+    while (!adc_fifo_is_empty() && samples < max_samples) {
+
+        samples++;
 
         uint16_t adc_val = adc_fifo_get();
-
         if (adc_val & 0x8000)
             _err_cnt++;
 
@@ -88,7 +95,7 @@ bool DccAdc::loop()
             _avg_idx = 0;
     }
 
-    return any;
+    return samples;
 }
 
 

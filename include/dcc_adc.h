@@ -13,7 +13,7 @@ public:
     void start();
     void stop();
 
-    bool loop();
+    int loop();
 
     uint16_t short_avg_ma() const;
     uint16_t long_avg_ma() const;
@@ -83,6 +83,8 @@ private:
 
     int _err_cnt;
 
+    // The log is allocated on the heap in log_init(). It should never be
+    // freed and reallocated repeatedly, so shouldn't lead to fragmentation.
     int _log_max;
     int _log_idx;
     uint16_t *_log;

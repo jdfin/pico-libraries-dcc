@@ -6,11 +6,11 @@
 // Controllable stub state
 static uint16_t _stub_short_avg_ma = 0;
 static uint16_t _stub_long_avg_ma = 100;
-static bool _stub_loop_result = false;
+static int _stub_loop_result = 0;
 // Control functions for tests
 void stub_adc_set_short_avg_ma(uint16_t val) { _stub_short_avg_ma = val; }
 void stub_adc_set_long_avg_ma(uint16_t val) { _stub_long_avg_ma = val; }
-void stub_adc_set_loop_result(bool val) { _stub_loop_result = val; }
+void stub_adc_set_loop_result(int val) { _stub_loop_result = val; }
 
 // DccAdc implementation stubs
 DccAdc::DccAdc(int gpio) :
@@ -31,7 +31,7 @@ DccAdc::~DccAdc() {}
 void DccAdc::start() {}
 void DccAdc::stop() {}
 
-bool DccAdc::loop() { return _stub_loop_result; }
+int DccAdc::loop() { return _stub_loop_result; }
 
 uint16_t DccAdc::short_avg_ma() const { return _stub_short_avg_ma; }
 uint16_t DccAdc::long_avg_ma() const { return _stub_long_avg_ma; }
