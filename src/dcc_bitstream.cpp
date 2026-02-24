@@ -54,6 +54,7 @@
 
 DccBitstream::DccBitstream(DccCommand &command, int sig_gpio, int pwr_gpio,
                            uart_inst_t *uart, int rc_gpio) :
+    int_timer(100),
     _show_dcc(false),
     _show_railcom(false),
     _command(command),
@@ -182,6 +183,7 @@ void DccBitstream::stop()
 //
 void DccBitstream::next_bit() // called in interrupt context
 {
+    int_timer.start();
     if (_byte_num == byte_num_cutout) {
         // doing railcom cutout
         if (_bit_num == 4) {
@@ -295,6 +297,8 @@ void DccBitstream::next_bit() // called in interrupt context
     // that the next interrupt happens immediately on return and things work
     // okay.
     //busy_wait_us_32(150); // more than DccSpec::t1_nom_us * 2 = 116 usec
+
+    int_timer.stop();
 
 } // void DccBitstream::next_bit()
 

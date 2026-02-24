@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstdio>
 // pico
+#include "hardware/sync.h"
 #include "pico/stdio.h"
 #include "pico/stdio_usb.h"
 #include "pico/stdlib.h"
@@ -747,11 +748,25 @@ static void address_help(bool verbose)
 
 // Debug ADC (dump log)
 // D A
+// Dump interrupt handler timing
+// D T
 
 static bool debug_try()
 {
     if (argv.argc() != 2)
         return false;
+
+    if (strcasecmp(argv[1], "T") == 0) {
+        uint32_t irq_status = save_and_disable_interrupts();
+        uint32_t mn = command.bitstream().int_timer.min();
+        uint32_t mx = command.bitstream().int_timer.max();
+        uint32_t av = command.bitstream().int_timer.avg();
+        command.bitstream().int_timer.reset();
+        restore_interrupts(irq_status);
+        printf("min %lu us  max %lu us  avg %lu us\n",
+               (unsigned long)mn, (unsigned long)mx, (unsigned long)av);
+        return true;
+    }
 
     if (adc.logging()) {
         if (strcasecmp(argv[1], "A") == 0) {
@@ -767,6 +782,7 @@ static bool debug_try()
 
 static void debug_help(bool verbose)
 {
+    print_help(verbose, "D T", "dump interrupt handler timing (min/max/avg us)");
     if (adc.logging()) {
         print_help(verbose, "D A", "dump ADC log");
     }

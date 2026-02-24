@@ -66,6 +66,11 @@ public:
 
     void show();
 
+    DccBitstream &bitstream()
+    {
+        return _bitstream;
+    }
+
     void show_dcc(bool show)
     {
         _bitstream.show_dcc(show);

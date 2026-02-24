@@ -6,6 +6,7 @@
 #include "hardware/uart.h"
 #include "pico/types.h"
 #include "railcom.h"
+#include "timer.h"
 
 class DccCommand;
 
@@ -21,6 +22,8 @@ public:
     void start_ops();
     void start_svc();
     void stop();
+
+    Timer int_timer;
 
     // log DCC packets sent to BufLog
     bool show_dcc() const
