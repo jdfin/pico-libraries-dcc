@@ -757,12 +757,20 @@ static bool debug_try()
         return false;
 
     if (strcasecmp(argv[1], "T") == 0) {
+        int n = command.bitstream().int_timer.num_bins();
+        uint16_t *bins = (n > 0) ? new uint16_t[n] : nullptr;
         uint32_t irq_status = save_and_disable_interrupts();
         uint32_t mn = command.bitstream().int_timer.min();
         uint32_t mx = command.bitstream().int_timer.max();
         uint32_t av = command.bitstream().int_timer.avg();
+        for (int i = 0; i < n; i++)
+            bins[i] = command.bitstream().int_timer.bin(i);
         command.bitstream().int_timer.reset();
         restore_interrupts(irq_status);
+        for (int i = 0; i < n; i++)
+            if (bins[i] != 0)
+                printf("%d %u\n", i, (unsigned)bins[i]);
+        delete[] bins;
         printf("min %lu us  max %lu us  avg %lu us\n",
                (unsigned long)mn, (unsigned long)mx, (unsigned long)av);
         return true;

@@ -54,7 +54,7 @@
 
 DccBitstream::DccBitstream(DccCommand &command, int sig_gpio, int pwr_gpio,
                            uart_inst_t *uart, int rc_gpio) :
-    int_timer(100),
+    int_timer(100, 64),
     _show_dcc(false),
     _show_railcom(false),
     _command(command),
