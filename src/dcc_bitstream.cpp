@@ -13,7 +13,7 @@
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
 #include "hardware/uart.h"
-#include "pwm_irq_mux.h" // misc/include
+#include "pwm_x.h" // misc/include
 #include "railcom.h"
 
 #define LOG_DCC 1
@@ -118,7 +118,7 @@ void DccBitstream::start(int preamble_bits, bool cutout)
     // RP2040 has one pwm with interrupt number PWM_IRQ_WRAP.
     // RP2350 has two pwms with interrupt numbers PWM_IRQ_WRAP_[01],
     // and PWM_IRQ_WRAP is PWM_IRQ_WRAP_0.
-    pwm_irq_mux_connect(_slice, pwm_handler, this); // misc/src/pwm_irq_mux.c
+    pwm_irq_mux_connect(_slice, pwm_handler, this); // misc/src/pwm_x.c
     pwm_clear_irq(_slice);
     pwm_set_irq_enabled(_slice, true);
 
