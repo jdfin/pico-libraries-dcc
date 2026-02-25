@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include "pwm_x.h"
+#include "pwm_extra.h"
 
 void pwmx_irqn_set_slice_handler(uint irqn, uint slice, //
                                  void (*func)(intptr_t), intptr_t arg)

@@ -9,7 +9,7 @@
 #include "hardware/pwm.h"
 #include "hardware/uart.h"
 // misc
-#include "pwm_x.h"
+#include "pwm_extra.h"
 // dcc
 #include "buf_log.h"
 #include "dcc_bitstream.h"
