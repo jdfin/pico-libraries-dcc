@@ -1,10 +1,14 @@
 // Stub pwm_irq_mux for native tests
 
+#include <stdint.h>
+
 #include "pwm_x.h"
 
-void pwm_irq_mux_connect(uint slice_num, void (*func)(void*), void *arg)
+void pwmx_irqn_set_slice_handler(uint irqn, uint slice, //
+                                 void (*func)(intptr_t), intptr_t arg)
 {
-    (void)slice_num;
+    (void)irqn;
+    (void)slice;
     (void)func;
     (void)arg;
 }

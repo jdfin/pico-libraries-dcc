@@ -1,19 +1,21 @@
-#include "dcc_bitstream.h"
 
 #include <cassert>
 #include <climits>
 #include <cstdint>
 #include <cstdio>
-
-#include "buf_log.h"
-#include "dcc_command.h"
-#include "dcc_pkt.h"
-#include "dcc_loco.h"
+// pico
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
 #include "hardware/uart.h"
-#include "pwm_x.h" // misc/include
+// misc
+#include "pwm_x.h"
+// dcc
+#include "buf_log.h"
+#include "dcc_bitstream.h"
+#include "dcc_command.h"
+#include "dcc_loco.h"
+#include "dcc_pkt.h"
 #include "railcom.h"
 
 #define LOG_DCC 1
@@ -118,7 +120,7 @@ void DccBitstream::start(int preamble_bits, bool cutout)
     // RP2040 has one pwm with interrupt number PWM_IRQ_WRAP.
     // RP2350 has two pwms with interrupt numbers PWM_IRQ_WRAP_[01],
     // and PWM_IRQ_WRAP is PWM_IRQ_WRAP_0.
-    pwm_irq_mux_connect(_slice, pwm_handler, this); // misc/src/pwm_x.c
+    pwmx_irqn_set_slice_handler(0, _slice, pwm_handler, (intptr_t)this);
     pwm_clear_irq(_slice);
     pwm_set_irq_enabled(_slice, true);
 
@@ -304,7 +306,7 @@ void DccBitstream::next_bit() // called in interrupt context
 
 
 // interrupt handler
-void DccBitstream::pwm_handler(void *arg) // called in interrupt context
+void DccBitstream::pwm_handler(intptr_t arg) // called in interrupt context
 {
     DccBitstream *me = (DccBitstream *)arg;
 

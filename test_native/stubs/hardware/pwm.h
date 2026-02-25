@@ -8,6 +8,9 @@
 
 #include "pico/types.h"
 
+#define PWM_IRQ_WRAP_0 0
+#define PWM_IRQ_WRAP   PWM_IRQ_WRAP_0
+
 typedef struct pwm_config {
     uint32_t clkdiv;
     uint32_t wrap;

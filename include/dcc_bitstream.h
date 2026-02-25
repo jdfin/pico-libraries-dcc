@@ -121,6 +121,6 @@ private:
 
     void next_bit(); // called in interrupt context
 
-    static void pwm_handler(void *arg); // called in interrupt context
+    static void pwm_handler(intptr_t arg); // called in interrupt context
 
 }; // class DccBitstream
