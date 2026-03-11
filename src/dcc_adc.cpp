@@ -11,6 +11,7 @@
 
 DccAdc::DccAdc(int gpio) :
     _gpio(gpio),
+    _avg_idx(0),
     _err_cnt(0),
     _log_max(0),
     _log_idx(0),
@@ -19,6 +20,9 @@ DccAdc::DccAdc(int gpio) :
 {
     if (_gpio < 0)
         return;
+
+    for (int i = 0; i < avg_max; i++)
+        _avg[i] = 0;
 
     adc_init();
     adc_gpio_init(_gpio);         // e.g. 26

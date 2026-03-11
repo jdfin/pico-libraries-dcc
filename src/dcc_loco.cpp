@@ -21,9 +21,11 @@ DccLoco::DccLoco(int address) :
     _ops_cv_done(false),
     _ops_cv_status(false),
     _ops_cv_val(0),
+    _ops_cv_cb(nullptr),
     _rc_speed(0),
     _rc_speed_us(UINT64_MAX),
-    _show_rc_speed(false)
+    _show_rc_speed(false),
+    _rc_speed_cb(nullptr)
 {
     set_address(address);
 }
@@ -240,6 +242,8 @@ DccPkt DccLoco::next_packet()
             _ops_cv_done = true;
             _ops_cv_status = false;
             _ops_cv_val = 0x00; // arbitrary, seems better to set it
+            if (_ops_cv_cb != nullptr)
+                _ops_cv_cb(this, false, 0);
             // continue on below to return a different packet
         } else {
             _pkt_last = &_pkt_read_cv;
@@ -393,23 +397,31 @@ void DccLoco::railcom(const RailComMsg *const msg, int msg_cnt) // called in int
                 _ops_cv_status = true;
                 _ops_cv_val = msg[i].pom.val;
                 _read_cv_cnt = 0;
+                if (_ops_cv_cb != nullptr)
+                    _ops_cv_cb(this, true, msg[i].pom.val);
             } else if (_write_cv_cnt > 0) {
                 assert(_write_bit_cnt == 0 && _set_adrs_cnt == 0);
                 _ops_cv_done = true;
                 _ops_cv_status = true;
                 _ops_cv_val = msg[i].pom.val;
                 _write_cv_cnt = 0;
+                if (_ops_cv_cb != nullptr)
+                    _ops_cv_cb(this, true, msg[i].pom.val);
             } else if (_write_bit_cnt > 0) {
                 assert(_set_adrs_cnt == 0);
                 _ops_cv_done = true;
                 _ops_cv_status = true;
                 _ops_cv_val = msg[i].pom.val;
                 _write_bit_cnt = 0;
+                if (_ops_cv_cb != nullptr)
+                    _ops_cv_cb(this, true, msg[i].pom.val);
             } else if (_set_adrs_cnt > 0) {
                 _ops_cv_done = true;
                 _ops_cv_status = true;
                 //_ops_cv_val = msg[i].pom.val;
                 _set_adrs_cnt = 0;
+                if (_ops_cv_cb != nullptr)
+                    _ops_cv_cb(this, true, 0); // XXX
             }
         } else if (msg[i].id == RailComMsg::MsgId::dyn) {
             if (msg[i].dyn.id == RailComSpec::DynId::dyn_speed_1) {
@@ -417,6 +429,8 @@ void DccLoco::railcom(const RailComMsg *const msg, int msg_cnt) // called in int
                     // loco's self-reported speed has changed
                     _rc_speed = msg[i].dyn.val;
                     _rc_speed_us = time_us_64();
+                    if (_rc_speed_cb != nullptr)
+                        _rc_speed_cb(this, (_rc_speed_us + 500) / 1000, _rc_speed);
                     if (_show_rc_speed) {
                         char *b = BufLog::write_line_get();
                         if (b != nullptr) {

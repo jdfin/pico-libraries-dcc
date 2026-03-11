@@ -2,6 +2,7 @@
 
 namespace DccCv {
 
+const int invalid = 0;
 const int address = 1;
 const int acceleration = 3;
 const int deceleration = 4;

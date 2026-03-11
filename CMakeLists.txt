@@ -1,16 +1,19 @@
-add_library(dcc INTERFACE) 
+
+add_library(dcc INTERFACE)
 
 target_sources(dcc INTERFACE
     ${CMAKE_CURRENT_LIST_DIR}/src/dcc_adc.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/dcc_api.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/dcc_bit.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/dcc_bitstream.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/dcc_command.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/src/dcc_pkt.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/dcc_loco.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/dcc_pkt.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/dcc_pkt2.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/dcc_srv.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/railcom.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/railcom_msg.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/railcom_spec.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/src/dcc_pkt2.cpp
 )
 
 target_include_directories(dcc INTERFACE 
@@ -18,6 +21,7 @@ target_include_directories(dcc INTERFACE
 )
 
 target_link_libraries(dcc INTERFACE
+    pico_multicore
     pico_stdlib
     hardware_adc
     hardware_clocks
@@ -31,4 +35,5 @@ target_link_libraries(dcc INTERFACE
 
 add_subdirectory(dcc_bit_hist)
 add_subdirectory(dcc_cmd)
+add_subdirectory(dcc_raw)
 add_subdirectory(dcc_spy)

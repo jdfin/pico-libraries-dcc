@@ -16,7 +16,7 @@
 #include "hardware/uart.h"
 
 
-DccCommand::DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc &adc,
+DccCommand::DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc *adc,
                        uart_inst_t *const rc_uart, int rc_gpio) :
     _bitstream(*this, sig_gpio, pwr_gpio, rc_uart, rc_gpio),
     _adc(adc),
@@ -60,7 +60,7 @@ void DccCommand::set_mode_off()
 {
     _mode = Mode::OFF;
     _mode_svc = ModeSvc::NONE;
-    _adc.stop();
+    _adc->stop();
     _bitstream.stop();
 }
 
@@ -118,7 +118,7 @@ void DccCommand::svc_start()
     assert(_svc_cmd_cnt == 0);
     _svc_cmd_step = SvcCmdStep::RESET1;
     _svc_cmd_cnt = DccSpec::svc_reset1_cnt;
-    _adc.start();
+    _adc->start();
     _bitstream.start_svc();
 }
 
@@ -156,8 +156,8 @@ void DccCommand::loop() // called in interrupt context
     // samples. But depending on the interrupt timing, maybe there can be none
     // or more than two.
 
-    if (_adc.loop() > 0)
-        ack_check(_adc.short_avg_ma());
+    if (_adc->loop() > 0)
+        ack_check(_adc->short_avg_ma());
 }
 
 
@@ -208,7 +208,7 @@ void DccCommand::get_packet_svc_write(DccPkt2 &pkt2) // called in interrupt cont
             // Done with resets (second-to-last one has just started).
             // The long average adc reading is the baseline for
             // detecting an ack pulse.
-            ack_arm(_adc.long_avg_ma() + ack_inc_ma);
+            ack_arm(_adc->long_avg_ma() + ack_inc_ma);
             // Next send write command.
             _svc_cmd_step = SvcCmdStep::COMMAND;
             _svc_cmd_cnt = DccSpec::svc_command_cnt;
@@ -219,7 +219,7 @@ void DccCommand::get_packet_svc_write(DccPkt2 &pkt2) // called in interrupt cont
     // Sending the writes or final resets - check for ack.
     if (ack()) {
         // Don't send any more packets, and power off.
-        if (!_adc.logging()) {
+        if (!_adc->logging()) {
             _svc_cmd_step = SvcCmdStep::RESET2;
             _svc_cmd_cnt = 0;
         }
@@ -255,10 +255,13 @@ void DccCommand::get_packet_svc_write(DccPkt2 &pkt2) // called in interrupt cont
 
     assert(_svc_cmd_cnt == 0);
 
-    if (_svc_status_next == IN_PROGRESS)
+    if (_svc_status_next == IN_PROGRESS) {
         _svc_status = ERROR; // no ack, failed
-    else
+        _svc_status_next = ERROR;
+    } else {
         _svc_status = SUCCESS;
+        _svc_status_next = SUCCESS;
+    }
 
     set_mode_off();
 
@@ -300,7 +303,7 @@ void DccCommand::get_packet_svc_read_cv(DccPkt2 &pkt2) // called in interrupt co
             // Done with resets (second-to-last one has just started).
             // The long average adc reading is the baseline for
             // detecting an ack pulse.
-            ack_arm(_adc.long_avg_ma() + ack_inc_ma);
+            ack_arm(_adc->long_avg_ma() + ack_inc_ma);
             // Now start bit-verifies for each bit in the CV.
             _verify_bit = 7;
             _verify_bit_val = 1;
@@ -322,7 +325,7 @@ void DccCommand::get_packet_svc_read_cv(DccPkt2 &pkt2) // called in interrupt co
         } else {
             // This is the ack for the byte-verify at the end
             // Don't send any more packets, and power off.
-            if (!_adc.logging()) {
+            if (!_adc->logging()) {
                 _svc_cmd_step = SvcCmdStep::RESET2;
                 _svc_cmd_cnt = 0;
             }
@@ -354,7 +357,7 @@ void DccCommand::get_packet_svc_read_cv(DccPkt2 &pkt2) // called in interrupt co
             // each time just before sending out the verify packets. The
             // current might not always hold steady through the whole
             // sequence.
-            ack_arm(_adc.long_avg_ma() + ack_inc_ma);
+            ack_arm(_adc->long_avg_ma() + ack_inc_ma);
         }
         return;
     }
@@ -391,10 +394,13 @@ void DccCommand::get_packet_svc_read_cv(DccPkt2 &pkt2) // called in interrupt co
     assert(_verify_bit == 8);
 
     // Done with the byte verify at the end.
-    if (_svc_status_next == IN_PROGRESS)
+    if (_svc_status_next == IN_PROGRESS) {
         _svc_status = ERROR; // no ack, failed
-    else
+        _svc_status_next = ERROR;
+    } else {
         _svc_status = SUCCESS;
+        _svc_status_next = SUCCESS;
+    }
 
     set_mode_off();
 
@@ -415,7 +421,7 @@ void DccCommand::get_packet_svc_read_bit(DccPkt2 &pkt2) // called in interrupt c
             // Done with resets (second-to-last one has just started).
             // The long average adc reading is the baseline for
             // detecting an ack pulse.
-            ack_arm(_adc.long_avg_ma() + ack_inc_ma);
+            ack_arm(_adc->long_avg_ma() + ack_inc_ma);
             // Next send bit-verify command.
             _svc_cmd_step = SvcCmdStep::COMMAND;
             _svc_cmd_cnt = DccSpec::svc_command_cnt;
@@ -430,7 +436,7 @@ void DccCommand::get_packet_svc_read_bit(DccPkt2 &pkt2) // called in interrupt c
     // Sending the writes or final resets - check for ack.
     if (ack()) {
         // Don't send any more packets, and power off.
-        if (!_adc.logging()) {
+        if (!_adc->logging()) {
             _svc_cmd_step = SvcCmdStep::RESET2;
             _svc_cmd_cnt = 0;
         }
@@ -475,10 +481,13 @@ void DccCommand::get_packet_svc_read_bit(DccPkt2 &pkt2) // called in interrupt c
     }
 
     // tried 0, then 1; hopefully got an ack for one of them
-    if (_svc_status_next == IN_PROGRESS)
+    if (_svc_status_next == IN_PROGRESS) {
         _svc_status = ERROR; // didn't get an ack for either
-    else
+        _svc_status_next = ERROR;
+    } else {
         _svc_status = SUCCESS;
+        _svc_status_next = SUCCESS;
+    }
 
     set_mode_off();
 

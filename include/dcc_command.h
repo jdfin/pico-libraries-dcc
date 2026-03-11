@@ -19,7 +19,7 @@ class DccCommand
 {
 public:
 
-    DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc &adc,
+    DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc *adc,
                uart_inst_t *const rc_uart = nullptr, int rc_gpio = -1);
     ~DccCommand();
 
@@ -48,7 +48,7 @@ public:
         return _mode;
     }
 
-    DccAdc &adc() const
+    DccAdc *adc() const
     {
         return _adc;
     }
@@ -111,7 +111,7 @@ private:
 
     DccBitstream _bitstream;
 
-    DccAdc &_adc;
+    DccAdc *_adc;
 
     Mode _mode;
 

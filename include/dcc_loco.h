@@ -30,6 +30,30 @@ public:
 
     void set_adrs_new(int adrs_new);
 
+    typedef void(OpsCvCb)(DccLoco *loco, bool success, uint8_t cv_val);
+
+    void ops_cb_set(OpsCvCb *cb)
+    {
+        _ops_cv_cb = cb;
+    }
+
+    OpsCvCb *ops_cb_get() const
+    {
+        return _ops_cv_cb;
+    }
+
+    typedef void (SpeedCb)(DccLoco *loco, uint32_t time_ms, int speed);
+
+    void speed_cb_set(SpeedCb *cb)
+    {
+        _rc_speed_cb = cb;
+    }
+
+    SpeedCb *speed_cb_get() const
+    {
+        return _rc_speed_cb;
+    }
+
     bool ops_done(bool &result, uint8_t &value);
 
     DccPkt next_packet();
@@ -37,14 +61,26 @@ public:
     void railcom(const RailComMsg *msg, int msg_cnt);
 
     // reset packet sequence to start (typically for debug purposes)
-    void restart() { _seq = 0; }
+    void restart()
+    {
+        _seq = 0;
+    }
 
     void show();
 
-    void show_rc_speed(bool show) { _show_rc_speed = show; }
-    bool show_rc_speed() const { return _show_rc_speed; }
+    void show_rc_speed(bool show)
+    {
+        _show_rc_speed = show;
+    }
+    bool show_rc_speed() const
+    {
+        return _show_rc_speed;
+    }
 
-    uint8_t get_rc_speed() const { return _rc_speed; }
+    uint8_t get_rc_speed() const
+    {
+        return _rc_speed;
+    }
 
 private:
 
@@ -117,10 +153,12 @@ private:
     bool _ops_cv_done;
     bool _ops_cv_status;
     uint8_t _ops_cv_val;
+    OpsCvCb *_ops_cv_cb;
 
     // speed reported in railcom data, if any
     uint8_t _rc_speed;
     uint64_t _rc_speed_us;
     bool _show_rc_speed;
+    SpeedCb *_rc_speed_cb;
 
 }; // class DccLoco
