@@ -1,0 +1,259 @@
+Multicore Usage
+
+In general:
+
+* Core1 does all the hard-realtime DCC and railcom protocol, primarily at
+  interrupt level.
+
+* Core0 handles higher-level stuff such as reading user commands from the
+  serial port or bluetooth ("new loco, address 2265", or "set loco 2265 speed
+  to 50"), and sends messages to core1 to carry out the command.
+
+So core1 "runs" the DccCommand object and its list of DccLoco objects. If
+nothing is changing, everything is interrupt driven, sending packets to all
+known locos in a round-robin fashion. A simple loop runs on core1 that creates
+the DccCommand object, then waits for messages from core0.
+
+Using the command-line interface as an example, core0 gathers input from the
+serial port until a command is ready, then sends it to core1. Inter-core
+messages are assumed valid, so core0 must only send valid messages to core1.
+
+Messages are:
+* Request from core0 to core1 - please do something
+* Response from core1 to core0 - here's how that went
+* Notification from core1 to core0 - something you asked for has changed
+
+A request always generates an immediate response. It should be acceptable (but
+not required) for core0 to send a request and immediately block for the
+response.
+
+A notification is sent from core1 to core0 unsolicited, but core0 must have
+asked to be notified about whatever it is.
+
+Ponder: All messages are self-contained in that core1 does not have a concept
+of "current" loco (like a user interface might).
+
+Examples:
+
+Core0 requests that core1 create a new loco; core1 does it and sends a
+response "ok".
+
+Core0 requests that core1 read a CV from loco L; core1 sends a response "ok"
+and starts the read process. When the read is done or has timed out, core1
+sends a notification to core0 with the result.
+
+Core0 requests that core1 send any changes to loco L's speed (as reported via
+railcom). Core1 responds "ok" if the loco is sending the speed, then any time
+it changes, sends a notification to core0 with the new speed.
+
+Another Idea
+
+What if there's one queue for the DccCommand object and a queue for each DccLoco object?
+
+DccCommand commands:
+* track power
+* service mode operations
+* create new loco object
+
+DccLoco object:
+* enable/disable loco (messages to track from this loco)
+* set/get address
+* set/get speed
+* set/get function
+* enable/disable speed notifications
+
+Nah, one queue seems better.
+
+# Messages
+
+Abbreviated commands should work if unambiguous. Maybe only abbreviated commands.
+
+Parameters:
+                                 Min..Max   Bytes Chars
+  <cv_num>:   CV Number            1..1024    2     4
+  <cv_val>:   CV Value             0..255     1     3
+  <bit_num>:  Bit number           0..7       1     1
+  <address>:  Loco address         1..10239   2     5
+  <speed>:    Speed value       -127..127     1     4
+  <func_num>: Function number      0..68      1     2
+
+Messages are ascii text, space-separated, terminated by '\0'.
+
+All parameters are decimal. A UI might allow hex, but not the protocol.
+
+Messages are expected to be well-formed; any error parsing, including
+parameter out of range, returns ERROR.
+
+## System-Level
+
+TRACK GET
+  
+  > "T G"                     get track power status
+  < "OK 0"                    track power is off
+  < "OK 1"                    track power is on
+
+TRACK SET [0|1]
+
+  > "T S 0"                   turn track power off
+  < "OK"                      track power is off
+  < "ERROR"                   ops mode command in progress
+  
+  > "T S 1"                   turn track power on
+  < "OK"                      track power is on
+  < "ERROR"                   service mode command in progress
+
+## Service Mode
+
+CV <cv_num> GET
+
+  > "C 1024 G"                read CV in service mode
+  < "OK 255"                  CV value
+  < "ERROR"                   track power is on
+  < "ERROR"                   timeout waiting for response
+
+CV <cv_num> SET <cv_val>
+
+  > "C 1024 S 255"            write CV in service mode
+  < "OK"                      CV written
+  < "ERROR"                   track power is on
+  < "ERROR"                   timeout waiting for response
+
+CV <cv_num> BIT <bit_num> GET
+
+  > "C 1024 B 7 G"            read CV bit in service mode
+  < "OK 1"                    CV bit value
+  < "ERROR"                   track power is on
+  < "ERROR"                   timeout waiting for response
+
+CV <cv_num> BIT <bit_num> SET [0|1]
+
+  > "C 1024 B 7 S 1"          write CV bit in service mode
+  < "OK"                      CV bit written
+  < "ERROR"                   track power is on
+  < "ERROR"                   timeout waiting for response
+
+ADDRESS GET
+
+  > "A G"                     read loco address in service mode
+  < "OK 10239"                loco address
+  < "ERROR"                   track power is on
+  < "ERROR"                   timeout waiting for response
+
+ADDRESS SET <address>
+
+  > "A S 10239"               write loco address in service mode
+  < "OK"                      address written
+  < "ERROR"                   track power is on
+  < "ERROR"                   timeout waiting for response
+
+## Ops Mode
+
+LOCO <address> NEW
+  Create new DccLoco object with address. Does not immediately touch track but
+  DCC messages to new loco will start going out if/when track is powered on.
+
+  > "L 10239 N"               new loco object with address
+  < "OK"                      loco object created
+  < "ERROR"                   loco with that address already exists
+  < "ERROR"                   too many loco objects already
+
+LOCO <address> DELETE
+  Delete DccLoco object with address. Does not immediately touch track but DCC
+  messages to loco will stop going out if/when track is powered on.
+  
+  > "L 10239 D"               delete loco object with address
+  < "OK"                      loco object deleted
+  < "ERROR"                   loco with address does not exist
+
+LOCO <address> ADDRESS SET <address>
+  Program address in ops mode and change address in DccLoco object. Only works
+  if you are changing from short to long or vice versa.
+  
+  Short to Long:
+  > "L 127 A S 10239"         change loco's address
+  < "OK"                      address changed
+  < "ERROR"                   loco with (short) address does not exist
+  < "ERROR"                   timeout waiting for response
+
+  Long to short:
+  > "L 10239 A S 127"         change loco's address
+  < "OK"                      address changed
+  < "ERROR"                   loco with (long) address does not exist
+  < "ERROR"                   timeout waiting for response
+
+  Short to Short:
+  > "L 127 A S 126"           change loco's address
+  < "ERROR"                   loco with (short) address does not exist
+  < "ERROR"                   new loco address invalid
+
+  Long to long:
+  > "L 10239 A S 10238"       change loco's address
+  < "ERROR"                   loco with (long) address does not exist
+  < "ERROR"                   new loco address invalid
+
+LOCO <address> SPEED GET
+  Get requested speed from DccLoco object. Does not touch track.
+
+  > "L 10239 S G"             get loco's speed
+  < "OK -127"                 loco's speed
+  < "ERROR"                   loco with address does not exist
+
+LOCO <address> SPEED SET <speed>
+  Set requested speed in DccLoco object. Does not immediately touch track, but
+  changes subsequent speed messages sent to this loco when track is on.
+
+  > "L 10239 S S -127"        set loco's speed
+  < "OK"                      speed changed
+  < "ERROR"                   loco with address does not exist
+
+LOCO <address> SPEED REQ [0|1]
+  Request actual speed updates from loco. Message sent when a railcom speed
+  message is received, then any time another is received and it differs from
+  the previous one.
+
+  > "L 10239 S R 1"           enable speed updates from loco
+  < "OK"                      updates enabled
+  < "ERROR"                   loco with address does not exist
+  :
+  < "L 10239 S 127"           loco reported speed
+  :
+  < "L 10239 S 126"           loco reported speed
+  :
+  > "L 10239 S R 0"           disable speed updates from loco
+  < "OK"                      updates disabled
+  < "ERROR"                   loco address invalid
+
+LOCO <address> FUNC <func_num> GET
+  Get function setting from DccLoco object. Does not touch track.
+
+  > "L 10239 F 68 G"          get function setting
+  < "OK 1"                    function setting
+  < "ERROR"                   loco address invalid
+
+LOCO <address> FUNC <func_num> SET [0|1]
+  Set function in DccLoco object. Does not immediately touch track, but
+  changes subsequent function messages sent to this loco when track is on.
+
+  > "L 10239 F 68 S 1"        set function in loco
+  < "OK"                      function set
+  < "ERROR"                   loco address invalid
+
+LOCO <address> CV <cv_num> GET
+
+  > "L 10239 C 1024 G"        read CV
+  < "OK 255"                  CV value
+  < "ERROR"                   loco address invalid
+  < "ERROR"                   timeout waiting for response
+
+LOCO <address> CV <cv_num> SET <cv_val>
+
+  > "L 10239 C 1024 S 255"    write CV
+  < "OK"                      CV written
+  < "ERROR"                   loco address invalid
+  < "ERROR"                   timeout waiting for response
+
+LOCO <address> CV <cv_num> BIT <bit_num> SET [0|1]
+  > "L 10239 C 1024 B 7 S 1"  write CV bit
+  < "OK"                      CV bit written
+  < "ERROR"                   loco address invalid
+  < "ERROR"                   timeout waiting for response
