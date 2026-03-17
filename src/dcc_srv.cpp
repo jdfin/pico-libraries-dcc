@@ -254,6 +254,15 @@ static bool cv_msg(const Args &a, char *rsp)
         return true;
     }
 
+    // track must be off
+    // XXX It might be better if DccCommand returned an error for attempting
+    //     service mode operations when track is on, but in the current
+    //     implementation there's no return code in a good place.
+    if (command->mode() != DccCommand::Mode::OFF) {
+        snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
+        return true;
+    }
+
     const char cmd = a[2].c;
     if (cmd == 'G') {
         return cv_get_msg(a, rsp);
@@ -436,6 +445,15 @@ static bool address_msg(const Args &a, char *rsp)
 
     // a[1] is cmd ('G' or 'S')
     if (a.argc() < 2 || a[1].t != Args::Type::CHAR) {
+        snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
+        return true;
+    }
+
+    // track must be off
+    // XXX It might be better if DccCommand returned an error for attempting
+    //     service mode operations when track is on, but in the current
+    //     implementation there's no return code in a good place.
+    if (command->mode() != DccCommand::Mode::OFF) {
         snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
         return true;
     }

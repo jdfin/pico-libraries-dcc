@@ -1,22 +1,95 @@
 import time
 import serial as ps
 
-verbosity_tests = [
-    [ 'V', 'ERROR' ],           # argc != 3
-    [ 'V C', 'ERROR' ],         # argc != 3
-    [ 'V X ON', 'ERROR' ],      # argv[1] invalid
-    [ 'V C 0', 'ERROR' ],       # argv[2] invalid
-]
-
 track_tests = [
-    [ 'T', 'ERROR' ],           # argc != 2
+    # errors detected by dcc_cmd
+    [ 'T', 'ERROR' ],           # argc < 2
     [ 'T X', 'ERROR' ],         # argv[1] invalid
     [ 'T 2', 'ERROR' ],         # argv[1] invalid
-    [ 'T ON 0', 'ERROR' ],      # argc != 2
-    [ 'T ON', 'OK' ],
-    [ 'T ?', 'ON' ],
-    [ 'T OFF', 'OK' ],
-    [ 'T ?', 'OFF' ],
+    [ 'T G 0', 'ERROR' ],       # "T G", argc != 2
+    [ 'T S', 'ERROR' ],         # "T S", argc != 3
+    [ 'T S X', 'ERROR' ],       # "T S", argv[2] invalid
+    # errors detected by dcc_srv
+    # (none that can get thru dcc_api)
+    # normal operation
+    [ 'T S 1', '[Ok]'],         # track on
+    [ 'T G', ' on ... [Ok]'],    #
+    [ 'T S 0', '[Ok]'],         # track off
+    [ 'T G', ' off ... [Ok]'],   #
+]
+
+cv_tests = [
+    # setup
+    [ 'T S 0', '[Ok]' ],            # track off
+    # errors detected by dcc_cmd
+    [ 'C', 'ERROR' ],               # argc < 2
+    [ 'C X', 'ERROR' ],             # argv[1] invalid
+    [ 'C 8', 'ERROR' ],             # argc < 3
+    [ 'C 8 X', 'ERROR' ],           # argv[2] invalid
+    [ 'C 8 G X', 'ERROR' ],         # "C <cv_num> G", argc != 3
+    [ 'C 8 S', 'ERROR' ],           # "C <cv_num> S", argc != 4
+    [ 'C 8 S 8 X', 'ERROR' ],       # "C <cv_num> S", argc != 4
+    [ 'C 8 S X', 'ERROR' ],         # "C <cv_num> S", argv[3] invalid
+    [ 'C 8 B', 'ERROR' ],           # "C <cv_num> B", argc < 5
+    [ 'C 8 B X', 'ERROR' ],         # "C <cv_num> B", argv[3] invalid
+    [ 'C 8 B 0 G X', 'ERROR' ],     # "C <cv_num> B <bit_num> G", argc != 5
+    [ 'C 8 B 0 S', 'ERROR' ],       # "C <cv_num> B <bit_num> S", argc != 6
+    [ 'C 8 B 0 S 1 X', 'ERROR' ],   # "C <cv_num> B <bit_num> S", argc != 6
+    [ 'C 8 B 0 S X', 'ERROR' ],     # "C <cv_num> B <bit_num> S", argv[5] invalid
+    # errors detected by dcc_srv
+    [ 'C 0 G', '[Error]' ],         # cv_num out of range
+    [ 'C 1025 G', '[Error]' ],      # cv_num out of range
+    [ 'C 0 S 0', '[Error]' ],       # cv_num out of range
+    [ 'C 1025 S 0', '[Error]' ],    # cv_num out of range
+    [ 'C 3 S 256', '[Error]' ],     # cv_val out of range
+    [ 'C 3 B 8 G', '[Error]' ],     # bit_num out of range
+    [ 'C 3 B 8 S 0', '[Error]' ],   # bit_num out of range
+    [ 'C 3 B 0 S 2', '[Error]' ],   # bit_val out of range
+    [ 'T S 1', '[Ok]' ],            # track on
+    [ 'C 3 G', '[Error]' ],         # track must be off
+    [ 'C 3 S 0', '[Error]' ],       # track must be off
+    [ 'C 3 B 0 S 1', '[Error]' ],   # track must be off
+    [ 'T S 0', '[Ok]' ],            # track off
+    # normal operation
+    [ 'C 8 S 8', '[Ok]' ],          # reset loco to adrs 3
+    [ 'C 8 G', ' 0x97 ... [Ok]' ],   # get cv8 (assumes ESU)
+    [ 'C 3 G', ' 0x14 ... [Ok]' ],   # get cv3 (acceleration)
+    [ 'C 3 S 48', '[Ok]' ],         # set cv3
+    [ 'C 3 G', ' 0x30 ... [Ok]' ],   # get cv3
+    [ 'C 3 B 5 G', ' 1 ... [Ok]' ],  # get cv3 bit 5
+    [ 'C 3 B 5 S 0', '[Ok]' ],      # cv3 bit 5 = 0
+    [ 'C 3 B 2 G', ' 0 ... [Ok]' ],  # get cv3 bit 2
+    [ 'C 3 B 2 S 1', '[Ok]' ],      # cv3 bit 2 = 1
+    [ 'C 3 G', ' 0x14 ... [Ok]' ],   # get cv3
+    # cleanup
+    [ 'T S 0', '[Ok]' ],            # track off
+]
+
+address_tests = [
+    # setup
+    [ 'T S 0', '[Ok]' ],            # track off
+    # errors detected by dcc_cmd
+    [ 'A', 'ERROR' ],               # argc < 2
+    [ 'A X', 'ERROR' ],             # argv[1] invalid
+    [ 'A G X', 'ERROR' ],           # "A G", argc != 2
+    [ 'A S 3 X', 'ERROR' ],         # "A S <a>", argc != 3
+    [ 'A S X', 'ERROR' ],           # "A S <a>", argv[2] invalid
+    # errors detected by dcc_srv
+    [ 'A S 0', '[Error]' ],         # "A S <a>", address out of range
+    [ 'A S 11000', '[Error]' ],     # "A S <a>", address out of range
+    [ 'T S 1', '[Ok]' ],            # track on
+    [ 'A G', '[Error]' ],           # track must be off
+    [ 'A S 3', '[Error]' ],         # track must be off
+    [ 'T S 0', '[Ok]' ],            # track off
+    # normal operation
+    [ 'C 8 S 8', '[Ok]' ],          # reset loco to adrs 3
+    [ 'A G', ' 3 ... [Ok]' ],       # get short address
+    [ 'A S 7890', '[Ok]' ],         # set long address
+    [ 'A G', ' 7890 ... [Ok]' ],    # get long address
+    [ 'A S 3', '[Ok]' ],            # set short address
+    [ 'A G', ' 3 ... [Ok]' ],       # get short address
+    # cleanup
+    [ 'C 8 S 8', '[Ok]' ],          # reset loco to adrs 3
 ]
 
 loco_tests = [
@@ -108,56 +181,6 @@ function_tests = [
     [ 'F 0 1 ON', 'ERROR' ],    # argc > 3
 ]
 
-cv_tests = [
-#   [ 'C', 'ERROR' ],           # argc < 3
-#   [ 'C 1', 'ERROR' ],         # argc < 3
-#   [ 'C 0 0', 'ERROR' ],       # cv_num out of range
-#   [ 'C 1025 0', 'ERROR' ],    # cv_num out of range
-
-#   [ 'T OFF', 'OK' ],          # track off (svc mode)
-
-#   [ 'C 3 X', 'ERROR' ],       # argv[2] invalid
-#   [ 'C 3 -300', 'ERROR' ],    # argv[2] out of range
-#   [ 'C 3 300', 'ERROR' ],     # argv[2] out of range
-#   [ 'C 8 8', 'OK' ],          # reset
-#   [ 'C 8 ?', '151' ],         # mfg id = ESU
-#   [ 'C 8 7 ?', '1' ],         # cv8 bit 7
-#   [ 'C 8 6 ?', '0' ],         # cv8 bit 6
-
-#   [ 'T ON', 'OK' ],           # track on (ops mode)
-
-#   [ 'C 3 X', 'ERROR' ],       # argv[2] invalid
-#   [ 'C 3 -300', 'ERROR' ],    # argv[2] out of range
-#   [ 'C 3 300', 'ERROR' ],     # argv[2] out of range
-#   [ 'C 8 8', 'OK' ],          # reset
-#   [ 'C 8 ?', '151' ],         # using railcom
-#   [ 'C 8 7 ?', 'ERROR' ],     # no ops mode read bit
-
-    [ 'T OFF', 'OK' ],          # track off (svc mode)
-    [ 'C 8 8', 'OK' ],          # reset loco to adrs 3
-    [ 'T ON', 'OK' ],           # track on (ops mode)
-    [ 'L 3', 'OK' ],            # expected loco
-    [ 'C 8 ?', '151' ],         #
-    [ 'L 4', 'OK' ],            # nonexistent loco
-    [ 'C 8 ?', 'ERROR' ],       #
-
-    [ 'T OFF', 'OK' ],          # leave track off
-]
-
-address_tests = [
-    [ 'T ?', 'OFF' ], # track must be off (svc mode)
-    [ 'A', 'ERROR' ], # argc != 2
-    [ 'A X', 'ERROR' ], # addr not an integer
-    [ 'A 0', 'ERROR' ], # addr out of range
-    [ 'A 99999', 'ERROR' ], # addr out of range
-    [ 'A 3', 'OK' ], # set addr
-    [ 'A ?', '3' ], # get addr
-    [ 'A 2265', 'OK' ], # set addr
-    [ 'A ?', '2265' ], # get addr
-    [ 'A 3', 'OK' ], # set addr
-    [ 'A ?', '3' ], # get addr
-]
-
 railcom_tests = [
     [ 'C 8 8', 'OK' ],
     [ 'C 31 0', 'OK' ],
@@ -203,24 +226,14 @@ railcom_tests = [
 # prd_dat: 2b_2f_d0_0f
 
 tests = [
-    #verbosity_tests,
-    #track_tests,
+    track_tests,
+    cv_tests,
+    address_tests,
     #loco_tests,
     #speed_tests,
     #function_tests,
-    #cv_tests,
-    #address_tests,
-    railcom_tests,
+    #railcom_tests,
 ]
-
-#port = ps.Serial('COM10', timeout=5)
-port = ps.Serial('/dev/ttyACM1', timeout=5)
-
-verbose = True
-pass_count = 0
-fail_count = 0
-
-time.sleep(1)
 
 
 def flush_in():
@@ -234,25 +247,19 @@ def one_test(cmd, exp):
     flush_in()
     correct = True
     port.write((cmd + '\r\n').encode('utf-8'))
-    if verbose:
-        echo = port.readline().decode('utf-8').replace('\r', '').replace('\n', '')
-        if echo != cmd:
-            correct = False
-    else:
-        echo = ''
+    echo = port.readline().decode('utf-8').replace('\r', '').replace('\n', '')
+    if echo != cmd:
+        correct = False
     rsp = port.readline().decode('utf-8').replace('\r', '').replace('\n', '')
     if correct:
-        if verbose:
-            correct = rsp.startswith(exp)
-        else:
-            correct = (rsp == exp)
+        correct = (exp in rsp)
     global pass_count, fail_count
     if correct:
         pass_count += 1
-        print(f"{cmd:8} -->  {echo:8} -->  {rsp:48} >>>>> PASS")
+        print(f"{cmd:14} -->  {echo:14} -->  {rsp:54} >>>>> PASS")
     else:
         fail_count += 1
-        print(f"{cmd:8} -->  {echo:8} -->  {rsp:48} >>>>> FAIL: expected '" + exp + "'")
+        print(f"{cmd:14} -->  {echo:14} -->  {rsp:54} >>>>> FAIL: expected '" + exp + "'")
     return correct, echo, rsp
 
 
@@ -262,17 +269,17 @@ def one_group(group):
         one_test(t[0], t[1])
 
 
-for group in tests:
-    # run in both verbose and non-verbose modes
-    one_test('V C ON', 'OK')
-    verbose = True
-    one_group(group)
-    one_test('V C OFF', 'OK')
-    verbose = False
-    one_group(group)
+#port = ps.Serial('COM10', timeout=5)
+port = ps.Serial('/dev/ttyACM1', timeout=5)
 
-one_test('V C ON', 'OK')
-verbose = True
+pass_count = 0
+fail_count = 0
+
+time.sleep(1)
+
+
+for group in tests:
+    one_group(group)
 
 print(f"Passed: {pass_count}, Failed: {fail_count}")
 

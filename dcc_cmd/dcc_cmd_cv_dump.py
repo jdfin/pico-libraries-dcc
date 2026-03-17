@@ -30,8 +30,6 @@ import re
 
 port = ps.Serial('/dev/ttyACM1', timeout=5)
 
-verbose = True
-
 time.sleep(1)
 
 
@@ -46,18 +44,12 @@ def run_cmd(cmd, exp=None):
     flush_in()
     correct = True
     port.write((cmd + '\r\n').encode('utf-8'))
-    if verbose:
-        echo = port.readline().decode('utf-8').replace('\r', '').replace('\n', '')
-        if echo != cmd:
-            correct = False
-    else:
-        echo = ''
+    echo = port.readline().decode('utf-8').replace('\r', '').replace('\n', '')
+    if echo != cmd:
+        correct = False
     rsp = port.readline().decode('utf-8').replace('\r', '').replace('\n', '')
     if correct and (exp is not None):
-        if verbose:
-            correct = rsp.startswith(exp)
-        else:
-            correct = (rsp == exp)
+        correct = exp in rsp
     #print(f'CMD: "{cmd}" RSP: "{rsp}" EXP: "{exp}" CORRECT: {correct}')
     print(f'"{cmd}" --> "{rsp}"')
     if correct:
@@ -67,28 +59,27 @@ def run_cmd(cmd, exp=None):
 
 
 def read_cv(num, offset=False):
-    rsp = run_cmd(f'C {num} ?')
+    rsp = run_cmd(f'C {num} G')
     val = re.split(r'[ ()]+', rsp)
     if offset:
         num -= 257
     #print(f'{num} {val[0]} {val[1]}')
 
 
-run_cmd('T ON', 'OK')
-run_cmd('V C ON', 'OK')
-run_cmd('C 8 8', 'OK')
+run_cmd('T S 0', '[Ok]')
+run_cmd('C 8 S 8', '[Ok]')
 for cv in range(1, 257):
     read_cv(cv)
 
 print('\nDefault Page:\n')
-run_cmd('C 31 16', 'OK')
-run_cmd('C 32 0', 'OK')
+run_cmd('C 31 S 16', '[Ok]')
+run_cmd('C 32 S 0', '[Ok]')
 for cv in range(257, 513):
     read_cv(cv)
 
 print('\nRailCom Page:\n')
-run_cmd('C 31 0', 'OK')
-run_cmd('C 32 255', 'OK')
+run_cmd('C 31 S 0', '[Ok]')
+run_cmd('C 32 S 255', '[Ok]')
 for cv in range(257, 513):
     read_cv(cv, True)
 

@@ -281,8 +281,6 @@ static bool cv_try()
                 int bit_val;
                 if (!str_to_int(argv[5], &bit_val))
                     return false; // error parsing bit value
-                if (bit_val != 0 && bit_val != 1)
-                    return false; // bit value should be 0 or 1
                 printf("cv_bit_set ... ");
                 DccApi::Status s = DccApi::cv_bit_set(cv_num, bit_num, bit_val);
                 printf("[%s]\n", DccApi::status(s));
@@ -402,7 +400,7 @@ static bool loco_try()
     } else if (strcasecmp(cmd, "D") == 0) {
         if (argv.argc() != 3)
             return false; // junk after 'D'
-        printf("loco_create ... ");
+        printf("loco_delete ... ");
         DccApi::Status s = DccApi::loco_delete(addr);
         printf("[%s]\n", DccApi::status(s));
         return true;
