@@ -1,3 +1,4 @@
+#include <ctype.h> // toupper
 #include <strings.h>
 
 #include <cassert>
@@ -50,6 +51,23 @@ static struct {
 
 static loop_func *active = &loop_nop;
 
+// Commands are single letters + arguments.
+// Top level (first character):
+static inline bool cmd_is_track(char cmd) { return cmd == 'T' || cmd == 't'; }
+static inline bool cmd_is_cv(char cmd) { return cmd == 'C' || cmd == 'c'; }
+static inline bool cmd_is_address(char cmd) { return cmd == 'A' || cmd == 'a'; }
+static inline bool cmd_is_loco(char cmd) { return cmd == 'L' || cmd == 'l'; }
+static inline bool cmd_is_debug(char cmd) { return cmd == 'D' || cmd == 'd'; }
+// Subcommands (second and later characters):
+static inline bool cmd_is_get(char cmd) { return cmd == 'G' || cmd == 'g'; }
+static inline bool cmd_is_set(char cmd) { return cmd == 'S' || cmd == 's'; }
+static inline bool cmd_is_bit(char cmd) { return cmd == 'B' || cmd == 'b'; }
+static inline bool cmd_is_new(char cmd) { return cmd == 'N' || cmd == 'n'; }
+static inline bool cmd_is_del(char cmd) { return cmd == 'D' || cmd == 'd'; }
+static inline bool cmd_is_func(char cmd) { return cmd == 'F' || cmd == 'f'; }
+static inline bool cmd_is_speed(char cmd) { return cmd == 'S' || cmd == 's'; }
+static inline bool cmd_is_read(char cmd) { return cmd == 'R' || cmd == 'r'; }
+
 // These functions look at commands and see if there are any valid commands
 // to process.
 
@@ -58,6 +76,7 @@ static bool track_msg(const Args &a, char *rsp);
 static bool cv_msg(const Args &a, char *rsp);
 static bool address_msg(const Args &a, char *rsp);
 static bool loco_msg(const Args &a, char *rsp);
+static bool debug_msg(const Args &a, char *rsp);
 
 // DCC interface
 
@@ -121,14 +140,16 @@ static bool process_msg(const Args &a, char *rsp)
     }
 
     const char cmd = a[0].c;
-    if (cmd == 'T') {
+    if (cmd_is_track(cmd)) {
         return track_msg(a, rsp);
-    } else if (cmd == 'C') {
+    } else if (cmd_is_cv(cmd)) {
         return cv_msg(a, rsp);
-    } else if (cmd == 'A') {
+    } else if (cmd_is_address(cmd)) {
         return address_msg(a, rsp);
-    } else if (cmd == 'L') {
+    } else if (cmd_is_loco(cmd)) {
         return loco_msg(a, rsp);
+    } else if (cmd_is_debug(cmd)) {
+        return debug_msg(a, rsp);
     } else {
         snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
         return true;
@@ -150,7 +171,7 @@ static bool track_msg(const Args &a, char *rsp)
 {
     // already checked "T ..."
     assert(a.argc() >= 1);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'T');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_track(a[0].c));
 
     // a[1] is cmd ('G' or 'S')
     if (a.argc() < 2 || a[1].t != Args::Type::CHAR) {
@@ -159,9 +180,9 @@ static bool track_msg(const Args &a, char *rsp)
     }
 
     const char cmd = a[1].c;
-    if (cmd == 'G') {
+    if (cmd_is_get(cmd)) {
         return track_get_msg(a, rsp);
-    } else if (cmd == 'S') {
+    } else if (cmd_is_set(cmd)) {
         return track_set_msg(a, rsp);
     } else {
         snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
@@ -175,8 +196,8 @@ static bool track_get_msg(const Args &a, char *rsp)
 {
     // already checked "T G ..."
     assert(a.argc() >= 2);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'T');
-    assert(a[1].t == Args::Type::CHAR && a[1].c == 'G');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_track(a[0].c));
+    assert(a[1].t == Args::Type::CHAR && cmd_is_get(a[1].c));
 
     if (a.argc() != 2) {
         snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
@@ -192,8 +213,8 @@ static bool track_set_msg(const Args &a, char *rsp)
 {
     // already checked "T S ..."
     assert(a.argc() >= 2);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'T');
-    assert(a[1].t == Args::Type::CHAR && a[1].c == 'S');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_track(a[0].c));
+    assert(a[1].t == Args::Type::CHAR && cmd_is_set(a[1].c));
 
     if (a.argc() != 3 || a[2].t != Args::Type::INT) {
         snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
@@ -239,7 +260,7 @@ static bool cv_msg(const Args &a, char *rsp)
 {
     // already checked "C ..."
     assert(a.argc() >= 1);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'C');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_cv(a[0].c));
 
     // a[1] is cv_num
     if (a.argc() < 2 || a[1].t != Args::Type::INT || //
@@ -264,11 +285,11 @@ static bool cv_msg(const Args &a, char *rsp)
     }
 
     const char cmd = a[2].c;
-    if (cmd == 'G') {
+    if (cmd_is_get(cmd)) {
         return cv_get_msg(a, rsp);
-    } else if (cmd == 'S') {
+    } else if (cmd_is_set(cmd)) {
         return cv_set_msg(a, rsp);
-    } else if (cmd == 'B') {
+    } else if (cmd_is_bit(cmd)) {
         return cv_bit_msg(a, rsp);
     } else {
         snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
@@ -282,9 +303,9 @@ static bool cv_get_msg(const Args &a, char *rsp)
 {
     // already checked "C <cv_num> G ..."
     assert(a.argc() >= 3);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'C');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_cv(a[0].c));
     assert(a[1].t == Args::Type::INT); //cv_num range checked
-    assert(a[2].t == Args::Type::CHAR && a[2].c == 'G');
+    assert(a[2].t == Args::Type::CHAR && cmd_is_get(a[2].c));
 
     if (a.argc() != 3) {
         snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
@@ -307,9 +328,9 @@ static bool cv_set_msg(const Args &a, char *rsp)
 {
     // already checked "C <cv_num> S ..."
     assert(a.argc() >= 3);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'C');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_cv(a[0].c));
     assert(a[1].t == Args::Type::INT); //cv_num range checked
-    assert(a[2].t == Args::Type::CHAR && a[2].c == 'S');
+    assert(a[2].t == Args::Type::CHAR && cmd_is_set(a[2].c));
 
     if (a.argc() != 4 || a[3].t != Args::Type::INT || //
         a[3].i < DccPkt::cv_val_min || a[3].i > DccPkt::cv_val_max) {
@@ -337,9 +358,9 @@ static bool cv_bit_msg(const Args &a, char *rsp)
 {
     // already checked "C <cv_num> B ..."
     assert(a.argc() >= 3);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'C');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_cv(a[0].c));
     assert(a[1].t == Args::Type::INT); // cv_num range checked
-    assert(a[2].t == Args::Type::CHAR && a[2].c == 'B');
+    assert(a[2].t == Args::Type::CHAR && cmd_is_bit(a[2].c));
 
     // a[3] is bit number (0..7)
     if (a.argc() < 4 || a[3].t != Args::Type::INT || //
@@ -355,9 +376,9 @@ static bool cv_bit_msg(const Args &a, char *rsp)
     }
 
     const char subcmd = a[4].c;
-    if (subcmd == 'G') {
+    if (cmd_is_get(subcmd)) {
         return cv_bit_get_msg(a, rsp);
-    } else if (subcmd == 'S') {
+    } else if (cmd_is_set(subcmd)) {
         return cv_bit_set_msg(a, rsp);
     } else {
         snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
@@ -371,11 +392,11 @@ static bool cv_bit_get_msg(const Args &a, char *rsp)
 {
     // already checked "C <cv_num> B <bit_num> G ..."
     assert(a.argc() >= 5);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'C');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_cv(a[0].c));
     assert(a[1].t == Args::Type::INT); // cv_num range checked
-    assert(a[2].t == Args::Type::CHAR && a[2].c == 'B');
+    assert(a[2].t == Args::Type::CHAR && cmd_is_bit(a[2].c));
     assert(a[3].t == Args::Type::INT); // bit_num range checked
-    assert(a[4].t == Args::Type::CHAR && a[4].c == 'G');
+    assert(a[4].t == Args::Type::CHAR && cmd_is_get(a[4].c));
 
     if (a.argc() != 5) {
         snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
@@ -399,11 +420,11 @@ static bool cv_bit_set_msg(const Args &a, char *rsp)
 {
     // already checked "C <cv_num> B <bit_num> S ..."
     assert(a.argc() >= 5);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'C');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_cv(a[0].c));
     assert(a[1].t == Args::Type::INT); // cv_num range checked
-    assert(a[2].t == Args::Type::CHAR && a[2].c == 'B');
+    assert(a[2].t == Args::Type::CHAR && cmd_is_bit(a[2].c));
     assert(a[3].t == Args::Type::INT); // bit_num range checked
-    assert(a[4].t == Args::Type::CHAR && a[4].c == 'S');
+    assert(a[4].t == Args::Type::CHAR && cmd_is_set(a[4].c));
 
     // a[5] is bit value (0..1)
     if (a.argc() != 6 || a[5].t != Args::Type::INT || //
@@ -441,7 +462,7 @@ static bool address_msg(const Args &a, char *rsp)
 {
     // already checked "A ..."
     assert(a.argc() >= 1);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'A');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_address(a[0].c));
 
     // a[1] is cmd ('G' or 'S')
     if (a.argc() < 2 || a[1].t != Args::Type::CHAR) {
@@ -459,9 +480,9 @@ static bool address_msg(const Args &a, char *rsp)
     }
 
     const char cmd = a[1].c;
-    if (cmd == 'G') {
+    if (cmd_is_get(cmd)) {
         return address_get_msg(a, rsp);
-    } else if (cmd == 'S') {
+    } else if (cmd_is_set(cmd)) {
         return address_set_msg(a, rsp);
     } else {
         snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
@@ -475,8 +496,8 @@ static bool address_get_msg(const Args &a, char *rsp)
 {
     // already checked "A G ..."
     assert(a.argc() >= 2);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'A');
-    assert(a[1].t == Args::Type::CHAR && a[1].c == 'G');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_address(a[0].c));
+    assert(a[1].t == Args::Type::CHAR && cmd_is_get(a[1].c));
 
     if (a.argc() != 2) {
         snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
@@ -500,8 +521,8 @@ static bool address_set_msg(const Args &a, char *rsp)
 {
     // already checked "A S ..."
     assert(a.argc() >= 2);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'A');
-    assert(a[1].t == Args::Type::CHAR && a[1].c == 'S');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_address(a[0].c));
+    assert(a[1].t == Args::Type::CHAR && cmd_is_set(a[1].c));
 
     // a[2] is address
     if (a.argc() != 3 || a[2].t != Args::Type::INT || //
@@ -567,7 +588,7 @@ static bool loco_msg(const Args &a, char *rsp)
 {
     // already checked "L ..."
     assert(a.argc() >= 1);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'L');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_loco(a[0].c));
 
     // a[1] is address
     if (a.argc() < 2 || a[1].t != Args::Type::INT || //
@@ -589,15 +610,15 @@ static bool loco_msg(const Args &a, char *rsp)
     }
 
     const char cmd = a[2].c;
-    if (cmd == 'N') {
+    if (cmd_is_new(cmd)) {
         return loco_new_msg(a, rsp, addr);
-    } else if (cmd == 'D') {
+    } else if (cmd_is_del(cmd)) {
         return loco_del_msg(a, rsp, loco);
-    } else if (cmd == 'F') {
+    } else if (cmd_is_func(cmd)) {
         return loco_func_msg(a, rsp, loco);
-    } else if (cmd == 'S') {
+    } else if (cmd_is_speed(cmd)) {
         return loco_speed_msg(a, rsp, loco);
-    } else if (cmd == 'C') {
+    } else if (cmd_is_cv(cmd)) {
         return loco_cv_msg(a, rsp, loco);
     } else {
         snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
@@ -611,9 +632,9 @@ static bool loco_new_msg(const Args &a, char *rsp, int addr)
 {
     // already checked "L <addr> N ..."
     assert(a.argc() >= 3);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'L');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_loco(a[0].c));
     assert(a[1].t == Args::Type::INT);
-    assert(a[2].t == Args::Type::CHAR && a[2].c == 'N');
+    assert(a[2].t == Args::Type::CHAR && cmd_is_new(a[2].c));
 
     if (a.argc() != 3) {
         snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
@@ -639,9 +660,9 @@ static bool loco_del_msg(const Args &a, char *rsp, DccLoco *loco)
 {
     // already checked "L <addr> D ..."
     assert(a.argc() >= 3);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'L');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_loco(a[0].c));
     assert(a[1].t == Args::Type::INT);
-    assert(a[2].t == Args::Type::CHAR && a[2].c == 'D');
+    assert(a[2].t == Args::Type::CHAR && cmd_is_del(a[2].c));
 
     if (a.argc() != 3) {
         snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
@@ -665,9 +686,9 @@ static bool loco_func_msg(const Args &a, char *rsp, DccLoco *loco)
 {
     // already checked "L <addr> F ..."
     assert(a.argc() >= 3);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'L');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_loco(a[0].c));
     assert(a[1].t == Args::Type::INT);
-    assert(a[2].t == Args::Type::CHAR && a[2].c == 'F');
+    assert(a[2].t == Args::Type::CHAR && cmd_is_func(a[2].c));
 
     if (loco == nullptr) {
         snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
@@ -691,7 +712,7 @@ static bool loco_func_msg(const Args &a, char *rsp, DccLoco *loco)
 
     const char subcmd = a[4].c;
 
-    if (subcmd == 'G') {
+    if (cmd_is_get(subcmd)) {
 
         if (a.argc() != 5) {
             snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
@@ -702,7 +723,7 @@ static bool loco_func_msg(const Args &a, char *rsp, DccLoco *loco)
         sprintf(rsp, "OK %d", on ? 1 : 0);
         return true;
 
-    } else if (subcmd == 'S') {
+    } else if (cmd_is_set(subcmd)) {
 
         if (a.argc() != 6 || a[5].t != Args::Type::INT || //
             (a[5].i != 0 && a[5].i != 1)) {
@@ -739,9 +760,9 @@ static bool loco_speed_msg(const Args &a, char *rsp, DccLoco *loco)
 {
     // already checked "L <addr> S ..."
     assert(a.argc() >= 3);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'L');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_loco(a[0].c));
     assert(a[1].t == Args::Type::INT);
-    assert(a[2].t == Args::Type::CHAR && a[2].c == 'S');
+    assert(a[2].t == Args::Type::CHAR && cmd_is_speed(a[2].c));
 
     if (loco == nullptr) {
         snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
@@ -756,7 +777,7 @@ static bool loco_speed_msg(const Args &a, char *rsp, DccLoco *loco)
 
     const char subcmd = a[3].c;
 
-    if (subcmd == 'G') {
+    if (cmd_is_get(subcmd)) {
 
         if (a.argc() != 4) {
             snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
@@ -766,7 +787,7 @@ static bool loco_speed_msg(const Args &a, char *rsp, DccLoco *loco)
         sprintf(rsp, "OK %d", loco->get_speed());
         return true;
 
-    } else if (subcmd == 'S') {
+    } else if (cmd_is_set(subcmd)) {
 
         if (a.argc() != 5 || a[4].t != Args::Type::INT || //
             a[4].i < DccPkt::speed_min || a[4].i > DccPkt::speed_max) {
@@ -780,7 +801,7 @@ static bool loco_speed_msg(const Args &a, char *rsp, DccLoco *loco)
         strcpy(rsp, "OK");
         return true;
 
-    } else if (subcmd == 'R') {
+    } else if (cmd_is_read(subcmd)) {
 
         if (a.argc() != 5 || a[4].t != Args::Type::INT || //
             (a[4].i != 0 && a[4].i != 1)) {
@@ -813,9 +834,9 @@ static bool loco_cv_msg(const Args &a, char *rsp, DccLoco *loco)
 {
     // already checked "L <addr> C ..."
     assert(a.argc() >= 3);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'L');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_loco(a[0].c));
     assert(a[1].t == Args::Type::INT); // loco address
-    assert(a[2].t == Args::Type::CHAR && a[2].c == 'C');
+    assert(a[2].t == Args::Type::CHAR && cmd_is_cv(a[2].c));
 
     // Can't do any of these if the track is not already on
     if (command->mode() == DccCommand::Mode::OFF) {
@@ -824,11 +845,6 @@ static bool loco_cv_msg(const Args &a, char *rsp, DccLoco *loco)
     }
 
     if (loco == nullptr) {
-        snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
-        return true;
-    }
-
-    if (loco->ops_cb_get() != nullptr) {
         snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
         return true;
     }
@@ -848,11 +864,11 @@ static bool loco_cv_msg(const Args &a, char *rsp, DccLoco *loco)
 
     const char subcmd = a[4].c;
 
-    if (subcmd == 'G') {
+    if (cmd_is_get(subcmd)) {
         return loco_cv_get_msg(a, rsp, loco);
-    } else if (subcmd == 'S') {
+    } else if (cmd_is_set(subcmd)) {
         return loco_cv_set_msg(a, rsp, loco);
-    } else if (subcmd == 'B') {
+    } else if (cmd_is_bit(subcmd)) {
         return loco_cv_bit_msg(a, rsp, loco);
     } else {
         snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
@@ -863,7 +879,7 @@ static bool loco_cv_msg(const Args &a, char *rsp, DccLoco *loco)
 
 
 // careful: this is called at interrupt level in the DccBitstream's get_packet
-static void loco_cv_done(DccLoco *loco, bool success, uint8_t cv_val)
+static void loco_cv_done([[maybe_unused]] DccLoco *loco, bool success, uint8_t cv_val)
 {
     char rsp[rsp_msg_len_max];
 
@@ -875,8 +891,6 @@ static void loco_cv_done(DccLoco *loco, bool success, uint8_t cv_val)
         snprintf(rsp, sizeof(rsp), "ERROR in %lu ms", op_ms);
 
     queue_add_blocking(&rsp_queue, rsp);
-
-    loco->ops_cb_set(nullptr);
 }
 
 
@@ -884,11 +898,11 @@ static bool loco_cv_get_msg(const Args &a, char *rsp, DccLoco *loco)
 {
     // already checked "L <addr> C <cv_num> G ..."
     assert(a.argc() >= 5);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'L');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_loco(a[0].c));
     assert(a[1].t == Args::Type::INT); // loco address
-    assert(a[2].t == Args::Type::CHAR && a[2].c == 'C');
+    assert(a[2].t == Args::Type::CHAR && cmd_is_cv(a[2].c));
     assert(a[3].t == Args::Type::INT); // cv_num (range already checked)
-    assert(a[4].t == Args::Type::CHAR && a[4].c == 'G');
+    assert(a[4].t == Args::Type::CHAR && cmd_is_get(a[4].c));
     assert(loco != nullptr);
 
     if (a.argc() != 5) {
@@ -896,10 +910,8 @@ static bool loco_cv_get_msg(const Args &a, char *rsp, DccLoco *loco)
         return true;
     }
 
-    loco->ops_cb_set(loco_cv_done);
-
     const int cv_num = a[3].i;
-    loco->read_cv(cv_num);
+    loco->read_cv(cv_num, loco_cv_done);
 
     // it takes ~20 msec to read a CV via railcom
 
@@ -915,11 +927,11 @@ static bool loco_cv_set_msg(const Args &a, char *rsp, DccLoco *loco)
 {
     // already checked "L <addr> C <cv_num> S ..."
     assert(a.argc() >= 5);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'L');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_loco(a[0].c));
     assert(a[1].t == Args::Type::INT); // loco address
-    assert(a[2].t == Args::Type::CHAR && a[2].c == 'C');
+    assert(a[2].t == Args::Type::CHAR && cmd_is_cv(a[2].c));
     assert(a[3].t == Args::Type::INT); // cv_num (range already checked)
-    assert(a[4].t == Args::Type::CHAR && a[4].c == 'S');
+    assert(a[4].t == Args::Type::CHAR && cmd_is_set(a[4].c));
     assert(loco != nullptr);
 
     if (a.argc() != 6 || a[5].t != Args::Type::INT) {
@@ -927,11 +939,9 @@ static bool loco_cv_set_msg(const Args &a, char *rsp, DccLoco *loco)
         return true;
     }
 
-    loco->ops_cb_set(loco_cv_done);
-
     const int cv_num = a[3].i;
     const int cv_val = a[5].i;
-    loco->write_cv(cv_num, cv_val);
+    loco->write_cv(cv_num, cv_val, loco_cv_done);
 
     // it takes ~20 msec to write a CV via railcom
 
@@ -948,11 +958,11 @@ static bool loco_cv_bit_msg(const Args &a, char *rsp, DccLoco *loco)
 {
     // already checked "L <addr> C <cv_num> B ..."
     assert(a.argc() >= 5);
-    assert(a[0].t == Args::Type::CHAR && a[0].c == 'L');
+    assert(a[0].t == Args::Type::CHAR && cmd_is_loco(a[0].c));
     assert(a[1].t == Args::Type::INT); // loco address
-    assert(a[2].t == Args::Type::CHAR && a[2].c == 'C');
+    assert(a[2].t == Args::Type::CHAR && cmd_is_cv(a[2].c));
     assert(a[3].t == Args::Type::INT); // cv_num
-    assert(a[4].t == Args::Type::CHAR && a[4].c == 'B');
+    assert(a[4].t == Args::Type::CHAR && cmd_is_bit(a[4].c));
     assert(loco != nullptr);
 
     // a[5] is bit number (0..7)
@@ -962,8 +972,8 @@ static bool loco_cv_bit_msg(const Args &a, char *rsp, DccLoco *loco)
         return true;
     }
 
-    // a[6] is subcmd ('S')
-    if (a.argc() < 7 || a[6].t != Args::Type::CHAR || a[6].c != 'S') {
+    // a[6] is subcmd ('S' or 's')
+    if (a.argc() < 7 || a[6].t != Args::Type::CHAR || !cmd_is_set(a[6].c)) {
         snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
         return true;
     }
@@ -975,13 +985,10 @@ static bool loco_cv_bit_msg(const Args &a, char *rsp, DccLoco *loco)
         return true;
     }
 
-
-    loco->ops_cb_set(loco_cv_done);
-
     const int cv_num = a[3].i;
     const int bit_num = a[5].i;
     const int bit_val = a[7].i;
-    loco->write_bit(cv_num, bit_num, bit_val);
+    loco->write_bit(cv_num, bit_num, bit_val, loco_cv_done);
 
     // it takes ~20 msec to write a CV bit via railcom
 
@@ -991,6 +998,64 @@ static bool loco_cv_bit_msg(const Args &a, char *rsp, DccLoco *loco)
     return false; // response sent later by loco_cv_done
 
 } // loco_cv_bit_msg
+
+
+///// debug functions ////////////////////////////////////////////////////////
+
+
+static bool debug_msg(const Args &a, char *rsp)
+{
+    // already checked "D ..."
+    assert(a.argc() >= 1);
+    assert(a[0].t == Args::Type::CHAR && cmd_is_debug(a[0].c));
+
+    // a[1] is <code>
+    if (a.argc() < 2 || a[1].t != Args::Type::INT) {
+        snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
+        return true;
+    }
+
+    int code = a[1].i;
+
+    // a[2] is subcmd
+    if (a.argc() < 3 || a[2].t != Args::Type::CHAR) {
+        snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
+        return true;
+    }
+
+    const char subcmd = a[2].c;
+
+    if (cmd_is_set(subcmd)) {
+        // a[3] is <val>
+        if (a.argc() != 4 || a[3].t != Args::Type::INT) {
+            snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
+        } else {
+            if (code == 0) {
+                command->show_dcc(a[3].i != 0);
+                strcpy(rsp, "OK");
+            } else if (code == 1) {
+                command->show_railcom(a[3].i != 0);
+                strcpy(rsp, "OK");
+            } else {
+                snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
+            }
+        }
+    } else if (cmd_is_get(subcmd)) {
+        if (a.argc() != 3) {
+            snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
+        } else if (code == 0) {
+            snprintf(rsp, rsp_msg_len_max, "OK %d", command->show_dcc());
+        } else if (code == 1) {
+            snprintf(rsp, rsp_msg_len_max, "OK %d", command->show_railcom());
+        } else {
+            snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
+        }
+    } else {
+        snprintf(rsp, rsp_msg_len_max, "ERROR %d", __LINE__);
+    }
+    return true;
+
+} // debug_msg
 
 
 ///// loop functions /////////////////////////////////////////////////////////

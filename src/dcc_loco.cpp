@@ -22,6 +22,8 @@ DccLoco::DccLoco(int address) :
     _ops_cv_status(false),
     _ops_cv_val(0),
     _ops_cv_cb(nullptr),
+    _ops_cv_next_cb(nullptr),
+    _ops_cv_lockout(0),
     _rc_speed(0),
     _rc_speed_us(UINT64_MAX),
     _show_rc_speed(false),
@@ -177,37 +179,41 @@ void DccLoco::set_function(int num, bool on)
 
 // ops mode cv access
 
-void DccLoco::read_cv(int cv_num)
+void DccLoco::read_cv(int cv_num, OpsCvCb *cb)
 {
     _pkt_read_cv.set_cv(cv_num);
     _ops_cv_done = false;
     _ops_cv_status = false;
     // +1 because when it decrements to zero it's an error
     _read_cv_cnt = read_cv_send_cnt + 1;
+    _ops_cv_next_cb = cb;
 }
 
-void DccLoco::write_cv(int cv_num, uint8_t cv_val)
+void DccLoco::write_cv(int cv_num, uint8_t cv_val, OpsCvCb *cb)
 {
     _pkt_write_cv.set_cv(cv_num, cv_val);
     _ops_cv_done = false;
     _ops_cv_status = false;
     _write_cv_cnt = write_cv_send_cnt;
+    _ops_cv_next_cb = cb;
 }
 
-void DccLoco::write_bit(int cv_num, int bit_num, int bit_val)
+void DccLoco::write_bit(int cv_num, int bit_num, int bit_val, OpsCvCb *cb)
 {
     _pkt_write_bit.set_cv_bit(cv_num, bit_num, bit_val);
     _ops_cv_done = false;
     _ops_cv_status = false;
     _write_bit_cnt = write_bit_send_cnt;
+    _ops_cv_next_cb = cb;
 }
 
-void DccLoco::set_adrs_new(int adrs_new)
+void DccLoco::set_adrs_new(int adrs_new, OpsCvCb *cb)
 {
     _pkt_set_adrs.set_adrs_new(adrs_new);
     _ops_cv_done = false;
     _ops_cv_status = false;
     _set_adrs_cnt = set_adrs_send_cnt;
+    _ops_cv_next_cb = cb;
 }
 
 bool DccLoco::ops_done(bool &result, uint8_t &value)
@@ -221,53 +227,117 @@ bool DccLoco::ops_done(bool &result, uint8_t &value)
     return true;
 }
 
+// A counter counts up as we send packets. If the counter is even, we send
+// the speed. If the counter is odd, we send the next function packet. After
+// sending the last function packet, we start over at zero (speed).
+//
 //  0. Speed     1. F0-F4
 //  2. Speed     3. F5-F8
 //  4. Speed     5. F9-F12
 //  6. Speed     7. F13-F20
 //  8. Speed     9. F21-F28
 // 10. Speed    11. F29-F36
+// (It is common to wrap back to zero here,
+//  but we can send more functions if so configured.)
 // 12. Speed    13. F37-F44
 // 14. Speed    15. F45-F52
 // 16. Speed    17. F53-F60
 // 18. Speed    19. F61-F68
+//
+// CV access: The spec says the decoder must get two CV access packets back
+// to back (9.2.1, 2.3.7.3). We send more than that (typically 5) to allow
+// for errors. When a response is received via railcom, we stop sending.
+// However, because the responses are delayed by one packet, and we can't
+// tell which response packet goes with which request packet, we have to
+// space out the requests a little so we don't get them confused. Further,
+// when a CV write is done, the decoder (ESU LokPilot) seems to stop sending
+// railcom responses for a few packets starting several packets after the
+// write is acknowledged, so we wait long enough for that time to go by too.
+//
+// Heuristics:
+// (1) To avoid getting confused about which response goes with which request,
+// we always wait at least 'ops_cv_read_lockout' packets after a read response
+// is received before sending another read request.
+// (2) To avoid that no-response time after cv writes, we wait at least
+// 'ops_cv_write_lockout' packets after a write response is received before
+// sending another write request.
+// 'ops_cv_lockout' set from one of those and counts down after a cv access.
+//
 DccPkt DccLoco::next_packet()
 {
     assert(0 <= _seq && _seq < seq_max);
 
-    if (_read_cv_cnt > 0) {
-        _read_cv_cnt--;
-        if (_read_cv_cnt == 0) {
-            // No response. Since CV read requires railcom, this is an error.
-            _ops_cv_done = true;
-            _ops_cv_status = false;
-            _ops_cv_val = 0x00; // arbitrary, seems better to set it
-            if (_ops_cv_cb != nullptr)
-                _ops_cv_cb(this, false, 0);
-            // continue on below to return a different packet
-        } else {
-            _pkt_last = &_pkt_read_cv;
-            return _pkt_read_cv;
+    if (_ops_cv_lockout == 0) {
+        // can send an ops cv packet if needed
+
+        if (_ops_cv_next_cb != nullptr) {
+            _ops_cv_cb = _ops_cv_next_cb;
+            _ops_cv_next_cb = nullptr;
         }
+
+        if (_read_cv_cnt > 0) {
+            _read_cv_cnt--;
+            if (_read_cv_cnt == 0) {
+                // No response. Since CV read requires railcom, this is an error.
+                _ops_cv_done = true;
+                _ops_cv_status = false;
+                _ops_cv_val = 0x00; // arbitrary, seems better to set it
+                if (_ops_cv_cb != nullptr) {
+                    _ops_cv_cb(this, false, 0);
+                    _ops_cv_cb = nullptr;
+                }
+                _ops_cv_lockout = ops_cv_read_lockout;
+#if 0
+                char *b = BufLog::write_line_get();
+                if (b != nullptr) {
+                    char *e = b + BufLog::line_len;
+                    b += snprintf(b, e - b, "%d: lockout=%d", __LINE__,
+                                  _ops_cv_lockout);
+                    BufLog::write_line_put();
+                }
+#endif
+                // continue on below to return a different packet
+            } else {
+                _pkt_last = &_pkt_read_cv;
+                return _pkt_read_cv;
+            }
+        }
+
+        if (_write_cv_cnt > 0) {
+            _write_cv_cnt--;
+            _pkt_last = &_pkt_write_cv;
+            return _pkt_write_cv;
+        }
+
+        if (_write_bit_cnt > 0) {
+            _write_bit_cnt--;
+            _pkt_last = &_pkt_write_bit;
+            return _pkt_write_bit;
+        }
+
+        if (_set_adrs_cnt > 0) {
+            _set_adrs_cnt--;
+            _pkt_last = &_pkt_set_adrs;
+            return _pkt_set_adrs;
+        }
+
+    } else {
+        assert(_ops_cv_lockout > 0);
+        _ops_cv_lockout--;
+#if 0
+        char *b = BufLog::write_line_get();
+        if (b != nullptr) {
+            char *e = b + BufLog::line_len;
+            b +=
+                snprintf(b, e - b, "%d: lockout=%d", __LINE__, _ops_cv_lockout);
+            BufLog::write_line_put();
+        }
+#endif
     }
 
-    if (_write_cv_cnt > 0) {
-        _write_cv_cnt--;
-        _pkt_last = &_pkt_write_cv;
-        return _pkt_write_cv;
-    }
-
-    if (_write_bit_cnt > 0) {
-        _write_bit_cnt--;
-        _pkt_last = &_pkt_write_bit;
-        return _pkt_write_bit;
-    }
-
-    if (_set_adrs_cnt > 0) {
-        _set_adrs_cnt--;
-        _pkt_last = &_pkt_set_adrs;
-        return _pkt_set_adrs;
-    }
+    // Either _ops_cv_lockout is zero and there were no ops cv packets to
+    // send, or _ops_cv_lockout was nonzero and we're waiting the lockout
+    // time. Send the next speed/function packet in the sequence.
 
     int seq = _seq;
 
@@ -327,7 +397,8 @@ DccPkt DccLoco::next_packet()
 // This is called (at interrupt level) if any railcom channel2 messages are
 // received in the cutout following a DCC message from this loco.
 
-void DccLoco::railcom(const RailComMsg *const msg, int msg_cnt) // called in interrupt context
+void DccLoco::railcom(const RailComMsg *const msg,
+                      int msg_cnt) // called in interrupt context
 {
     constexpr int verbosity = 0;
 
@@ -391,37 +462,88 @@ void DccLoco::railcom(const RailComMsg *const msg, int msg_cnt) // called in int
 
     for (int i = 0; i < msg_cnt; i++) {
         if (msg[i].id == RailComMsg::MsgId::pom) {
-            if (_read_cv_cnt > 0) {
-                assert(_write_cv_cnt == 0 && _write_bit_cnt == 0 && _set_adrs_cnt == 0);
-                _ops_cv_done = true;
-                _ops_cv_status = true;
-                _ops_cv_val = msg[i].pom.val;
-                _read_cv_cnt = 0;
-                if (_ops_cv_cb != nullptr)
-                    _ops_cv_cb(this, true, msg[i].pom.val);
-            } else if (_write_cv_cnt > 0) {
-                assert(_write_bit_cnt == 0 && _set_adrs_cnt == 0);
-                _ops_cv_done = true;
-                _ops_cv_status = true;
-                _ops_cv_val = msg[i].pom.val;
-                _write_cv_cnt = 0;
-                if (_ops_cv_cb != nullptr)
-                    _ops_cv_cb(this, true, msg[i].pom.val);
-            } else if (_write_bit_cnt > 0) {
-                assert(_set_adrs_cnt == 0);
-                _ops_cv_done = true;
-                _ops_cv_status = true;
-                _ops_cv_val = msg[i].pom.val;
-                _write_bit_cnt = 0;
-                if (_ops_cv_cb != nullptr)
-                    _ops_cv_cb(this, true, msg[i].pom.val);
-            } else if (_set_adrs_cnt > 0) {
-                _ops_cv_done = true;
-                _ops_cv_status = true;
-                //_ops_cv_val = msg[i].pom.val;
-                _set_adrs_cnt = 0;
-                if (_ops_cv_cb != nullptr)
-                    _ops_cv_cb(this, true, 0); // XXX
+            if (_ops_cv_lockout == 0) {
+                if (_read_cv_cnt > 0) {
+                    assert(_write_cv_cnt == 0 && _write_bit_cnt == 0 &&
+                           _set_adrs_cnt == 0);
+                    _ops_cv_done = true;
+                    _ops_cv_status = true;
+                    _ops_cv_val = msg[i].pom.val;
+                    _read_cv_cnt = 0;
+                    _ops_cv_lockout = ops_cv_read_lockout;
+#if 0
+                    char *b = BufLog::write_line_get();
+                    if (b != nullptr) {
+                        char *e = b + BufLog::line_len;
+                        b += snprintf(b, e - b, "%d: lockout=%d", __LINE__,
+                                      _ops_cv_lockout);
+                        BufLog::write_line_put();
+                    }
+#endif
+                    if (_ops_cv_cb != nullptr) {
+                        _ops_cv_cb(this, true, msg[i].pom.val);
+                        _ops_cv_cb = nullptr;
+                    }
+                } else if (_write_cv_cnt > 0) {
+                    assert(_write_bit_cnt == 0 && _set_adrs_cnt == 0);
+                    _ops_cv_done = true;
+                    _ops_cv_status = true;
+                    _ops_cv_val = msg[i].pom.val;
+                    _write_cv_cnt = 0;
+                    _ops_cv_lockout = ops_cv_write_lockout;
+#if 0
+                    char *b = BufLog::write_line_get();
+                    if (b != nullptr) {
+                        char *e = b + BufLog::line_len;
+                        b += snprintf(b, e - b, "%d: lockout=%d", __LINE__,
+                                      _ops_cv_lockout);
+                        BufLog::write_line_put();
+                    }
+#endif
+                    if (_ops_cv_cb != nullptr) {
+                        _ops_cv_cb(this, true, msg[i].pom.val);
+                        _ops_cv_cb = nullptr;
+                    }
+                } else if (_write_bit_cnt > 0) {
+                    assert(_set_adrs_cnt == 0);
+                    _ops_cv_done = true;
+                    _ops_cv_status = true;
+                    _ops_cv_val = msg[i].pom.val;
+                    _write_bit_cnt = 0;
+                    _ops_cv_lockout = ops_cv_write_lockout;
+#if 0
+                    char *b = BufLog::write_line_get();
+                    if (b != nullptr) {
+                        char *e = b + BufLog::line_len;
+                        b += snprintf(b, e - b, "%d: lockout=%d", __LINE__,
+                                      _ops_cv_lockout);
+                        BufLog::write_line_put();
+                    }
+#endif
+                    if (_ops_cv_cb != nullptr) {
+                        _ops_cv_cb(this, true, msg[i].pom.val);
+                        _ops_cv_cb = nullptr;
+                    }
+                } else if (_set_adrs_cnt > 0) {
+                    _ops_cv_done = true;
+                    _ops_cv_status = true;
+                    //_ops_cv_val = msg[i].pom.val;
+                    _set_adrs_cnt = 0;
+                    _ops_cv_lockout = ops_cv_write_lockout;
+#if 0
+                    char *b = BufLog::write_line_get();
+                    if (b != nullptr) {
+                        char *e = b + BufLog::line_len;
+                        b += snprintf(b, e - b, "%d: lockout=%d", __LINE__,
+                                      _ops_cv_lockout);
+                        BufLog::write_line_put();
+                    }
+#endif
+                    if (_ops_cv_cb != nullptr) {
+                        _ops_cv_cb(this, true, 0); // XXX
+                        _ops_cv_cb = nullptr;
+                    }
+                }
             }
         } else if (msg[i].id == RailComMsg::MsgId::dyn) {
             if (msg[i].dyn.id == RailComSpec::DynId::dyn_speed_1) {
@@ -430,7 +552,8 @@ void DccLoco::railcom(const RailComMsg *const msg, int msg_cnt) // called in int
                     _rc_speed = msg[i].dyn.val;
                     _rc_speed_us = time_us_64();
                     if (_rc_speed_cb != nullptr)
-                        _rc_speed_cb(this, (_rc_speed_us + 500) / 1000, _rc_speed);
+                        _rc_speed_cb(this, (_rc_speed_us + 500) / 1000,
+                                     _rc_speed);
                     if (_show_rc_speed) {
                         char *b = BufLog::write_line_get();
                         if (b != nullptr) {

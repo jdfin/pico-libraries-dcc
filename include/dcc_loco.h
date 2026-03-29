@@ -23,24 +23,14 @@ public:
     bool get_function(int func) const;
     void set_function(int func, bool on);
 
-    void read_cv(int cv_num);
-
-    void write_cv(int cv_num, uint8_t cv_val);
-    void write_bit(int cv_num, int bit_num, int bit_val);
-
-    void set_adrs_new(int adrs_new);
-
     typedef void(OpsCvCb)(DccLoco *loco, bool success, uint8_t cv_val);
 
-    void ops_cb_set(OpsCvCb *cb)
-    {
-        _ops_cv_cb = cb;
-    }
+    void read_cv(int cv_num, OpsCvCb *cb);
 
-    OpsCvCb *ops_cb_get() const
-    {
-        return _ops_cv_cb;
-    }
+    void write_cv(int cv_num, uint8_t cv_val, OpsCvCb *cb);
+    void write_bit(int cv_num, int bit_num, int bit_val, OpsCvCb *cb);
+
+    void set_adrs_new(int adrs_new, OpsCvCb *cb);
 
     typedef void (SpeedCb)(DccLoco *loco, uint32_t time_ms, int speed);
 
@@ -154,6 +144,11 @@ private:
     bool _ops_cv_status;
     uint8_t _ops_cv_val;
     OpsCvCb *_ops_cv_cb;
+    OpsCvCb *_ops_cv_next_cb;
+
+    static constexpr int ops_cv_read_lockout = 4;
+    static constexpr int ops_cv_write_lockout = 12;
+    int _ops_cv_lockout;
 
     // speed reported in railcom data, if any
     uint8_t _rc_speed;

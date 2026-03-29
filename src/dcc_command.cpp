@@ -18,6 +18,7 @@
 
 DccCommand::DccCommand(int sig_gpio, int pwr_gpio, int slp_gpio, DccAdc *adc,
                        uart_inst_t *const rc_uart, int rc_gpio) :
+    _show_acks(false),
     _bitstream(*this, sig_gpio, pwr_gpio, rc_uart, rc_gpio),
     _adc(adc),
     _mode(Mode::OFF),
@@ -196,7 +197,8 @@ void DccCommand::get_packet_ops(DccPkt2 &pkt2) // called in interrupt context
 // 2. Send out DccSpec::svc_command_cnt (5) commands (write byte/bit)
 // 3. Send out DccSpec::svc_reset2_cnt (5) resets
 // If an ack is detected in step 2 or 3, immediately quit and power off track.
-void DccCommand::get_packet_svc_write(DccPkt2 &pkt2) // called in interrupt context
+void DccCommand::get_packet_svc_write(
+    DccPkt2 &pkt2) // called in interrupt context
 {
     assert(_svc_cmd_step != SvcCmdStep::NONE);
 
@@ -291,7 +293,8 @@ void DccCommand::get_packet_svc_write(DccPkt2 &pkt2) // called in interrupt cont
 //      b. if no ack has been received when the last reset goes out, we are
 //         done, _svc_status is set to ERROR, and calling svc_done() will
 //         return "done/error"
-void DccCommand::get_packet_svc_read_cv(DccPkt2 &pkt2) // called in interrupt context
+void DccCommand::get_packet_svc_read_cv(
+    DccPkt2 &pkt2) // called in interrupt context
 {
     assert(_svc_cmd_step != SvcCmdStep::NONE);
 
@@ -409,7 +412,8 @@ void DccCommand::get_packet_svc_read_cv(DccPkt2 &pkt2) // called in interrupt co
 } // void DccCommand::get_packet_svc_read_cv(DccPkt2 &pkt2)
 
 
-void DccCommand::get_packet_svc_read_bit(DccPkt2 &pkt2) // called in interrupt context
+void DccCommand::get_packet_svc_read_bit(
+    DccPkt2 &pkt2) // called in interrupt context
 {
     assert(_svc_cmd_step != SvcCmdStep::NONE);
 

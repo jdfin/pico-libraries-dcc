@@ -11,11 +11,15 @@
 #include "pico/stdlib.h"
 #include "pico/time.h"
 // misc
+#include "buf_log.h"
 #include "sys_led.h"
 // dcc
 #include "dcc_api.h"
 #include "dcc_gpio_cfg.h"
 #include "dcc_pkt.h"
+#include "railcom.h"
+
+//int RailCom::dbg_junk = 22;
 
 #if 0
 // function to get notification messages
@@ -46,6 +50,8 @@ int main()
     printf("\n");
     printf("dcc_raw\n");
     printf("\n");
+
+    RailCom::dbg_init();
 
     DccApi::init(dcc_sig_gpio, dcc_pwr_gpio, dcc_adc_gpio, dcc_rcom_gpio,
                  dcc_rcom_uart);
@@ -89,6 +95,8 @@ int main()
             printf("not: \"%s\"\n", not_msg);
             //printf("%s\n", not_msg);
         }
+
+        BufLog::loop();
 
     } // while (true)
 

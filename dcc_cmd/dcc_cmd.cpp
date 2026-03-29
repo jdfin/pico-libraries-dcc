@@ -34,12 +34,14 @@ static bool track_try();
 static bool cv_try();
 static bool addr_try();
 static bool loco_try();
+static bool debug_try();
 
 static void cmd_help();
 static void track_help();
 static void cv_help();
 static void addr_help();
 static void loco_help();
+static void debug_help();
 static void param_help();
 static void print_help(const char *help_short, const char *help_long);
 
@@ -129,6 +131,8 @@ static bool cmd_try()
         return addr_try();
     else if (strcasecmp(argv[0], "L") == 0)
         return loco_try();
+    else if (strcasecmp(argv[0], "D") == 0)
+        return debug_try();
     else
         return false;
 }
@@ -141,6 +145,7 @@ static void cmd_help()
     cv_help();
     addr_help();
     loco_help();
+    debug_help();
     printf("\n");
     param_help();
 }
@@ -431,7 +436,7 @@ static bool loco_try()
             int setting;
             if (str_to_int(argv[5], &setting) != 1)
                 return false; // error parsing setting
-            if (setting != 0 && setting != 1) 
+            if (setting != 0 && setting != 1)
                 return false; // setting should be 0 or 1
             printf("loco_func_set ... ");
             DccApi::Status s = DccApi::loco_func_set(addr, func, setting != 0);
@@ -509,7 +514,8 @@ static bool loco_try()
             if (str_to_int(argv[7], &bit_val) != 1)
                 return false; // error parsing bit_val
             printf("loco_cv_bit_set ... ");
-            DccApi::Status s = DccApi::loco_cv_bit_set(addr, cv_num, bit_num, bit_val);
+            DccApi::Status s =
+                DccApi::loco_cv_bit_set(addr, cv_num, bit_num, bit_val);
             printf("[%s]\n", DccApi::status(s));
             return true;
         } else {
@@ -534,6 +540,59 @@ static void loco_help()
     print_help("L <a> C <n> G", "loco_cv_val_get");
     print_help("L <a> C <n> S <v>", "loco_cv_val_set");
     print_help("L <a> C <n> B <b> S <v>", "loco_cv_bit_set");
+}
+
+
+static bool debug_try()
+{
+    assert(argv.argc() >= 1);
+    assert(strcasecmp(argv[0], "D") == 0);
+
+    // D <code> G       - get debug setting
+    // D <code> S <val> - set debug setting
+
+    // argv[1] is always <code>
+    int code;
+    if (argv.argc() < 2 || str_to_int(argv[1], &code) != 1)
+        return false; // error parsing code
+
+    // argv[2] is always cmd (G or S)
+    if (argv.argc() < 3)
+        return false;
+    const char *cmd = argv[2];
+
+    if (strcasecmp(cmd, "G") == 0) {
+        if (argv.argc() != 3)
+            return false; // should be "D <code> G"
+        printf("debug_get ... ");
+        int val;
+        DccApi::Status s = DccApi::debug_get(code, val);
+        if (s == DccApi::Status::Ok)
+            printf("%d ... ", val);
+        printf("[%s]\n", DccApi::status(s));
+        return true;
+    } else if (strcasecmp(cmd, "S") == 0) {
+        if (argv.argc() != 4)
+            return false; // should be "D <code> S <val>"
+        int val;
+        if (str_to_int(argv[3], &val) != 1)
+            return false; // error parsing value
+        printf("debug_set ... ");
+        DccApi::Status s = DccApi::debug_set(code, val);
+        printf("[%s]\n", DccApi::status(s));
+        return true;
+    } else {
+        // "D <cmd>", unknown <cmd>
+        return false;
+    }
+
+} // debug_try
+
+
+static void debug_help()
+{
+    print_help("D <code> G", "get debug value for code");
+    print_help("D <code> S <value>", "set debug value for code");
 }
 
 

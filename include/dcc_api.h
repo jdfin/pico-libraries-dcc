@@ -114,14 +114,28 @@ constexpr int32_t loco_cv_op_timeout_us = 1'000'000;
 
 Status loco_cv_val_get_start(int addr, int cv_num, int32_t end_us);
 Status loco_cv_val_get_check(int &cv_val, int32_t end_us);
-Status loco_cv_val_get(int addr, int cv_num, int &cv_val, int32_t timeout_us = loco_cv_op_timeout_us);
+Status loco_cv_val_get(int addr, int cv_num, int &cv_val, int attempts = 5);
 
 Status loco_cv_val_set_start(int addr, int cv_num, int cv_val, int32_t end_us);
 Status loco_cv_val_set_check(int32_t end_us);
-Status loco_cv_val_set(int addr, int cv_num, int cv_val, int32_t timeout_us = loco_cv_op_timeout_us);
+Status loco_cv_val_set(int addr, int cv_num, int cv_val, int attempts = 5);
 
 Status loco_cv_bit_set_start(int addr, int cv_num, int b_num, int b_val, int32_t end_us);
 Status loco_cv_bit_set_check(int32_t end_us);
-Status loco_cv_bit_set(int addr, int cv_num, int b_num, int b_val, int32_t timeout_us = loco_cv_op_timeout_us);
+Status loco_cv_bit_set(int addr, int cv_num, int b_num, int b_val, int attempts = 5);
+
+constexpr int32_t debug_timeout_us = 100'000;
+
+enum DebugCode {
+    RailCom = 0,
+};
+
+Status debug_get_start(int code, int32_t end_us);
+Status debug_get_check(int &val, int32_t end_us);
+Status debug_get(int code, int &val, int32_t timeout_us = debug_timeout_us);
+
+Status debug_set_start(int code, int val, int32_t end_us);
+Status debug_set_check(int32_t end_us);
+Status debug_set(int code, int val, int32_t timeout_us = debug_timeout_us);
 
 } // namespace DccApi

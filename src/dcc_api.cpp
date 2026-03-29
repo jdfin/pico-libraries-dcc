@@ -8,6 +8,7 @@
 #include "pico/stdlib.h"
 #include "pico/util/queue.h"
 // misc
+#include "buf_log.h" // XXX
 #include "str_ops.h" // strxcpy()
 // dcc
 #include "dcc_api.h"
@@ -37,14 +38,14 @@ namespace DccApi {
 const char *status(Status s)
 {
     switch (s) {
-    case Status::Ok:
-        return "Ok";
-    case Status::Timeout:
-        return "Timeout";
-    case Status::Error:
-        return "Error";
-    default:
-        return "Unknown";
+        case Status::Ok:
+            return "Ok";
+        case Status::Timeout:
+            return "Timeout";
+        case Status::Error:
+            return "Error";
+        default:
+            return "Unknown";
     }
 }
 
@@ -85,9 +86,11 @@ static inline Status req_send(const char *req_msg, int32_t end_us)
 // @ Status::Timeout
 static inline Status rsp_recv(char *rsp_msg, int32_t end_us)
 {
-    while (!queue_try_remove(&rsp_queue, rsp_msg))
+    while (!queue_try_remove(&rsp_queue, rsp_msg)) {
         if ((int32_t(time_us_32()) - end_us) >= 0)
             return Status::Timeout;
+        BufLog::loop();
+    }
     return Status::Ok;
 }
 
@@ -660,13 +663,16 @@ Status loco_cv_val_get_check(int &cv_val, int32_t end_us)
 }
 
 
-Status loco_cv_val_get(int addr, int cv_num, int &cv_val, int32_t timeout_us)
+Status loco_cv_val_get(int addr, int cv_num, int &cv_val, int attempts)
 {
-    int32_t end_us = time_us_32() + timeout_us;
-    Status s = loco_cv_val_get_start(addr, cv_num, end_us);
-    if (s != Status::Ok)
-        return s;
-    return loco_cv_val_get_check(cv_val, end_us);
+    while (attempts-- > 0) {
+        int32_t end_us = time_us_32() + loco_cv_op_timeout_us;
+        if (loco_cv_val_get_start(addr, cv_num, end_us) == Status::Ok &&
+            loco_cv_val_get_check(cv_val, end_us) == Status::Ok) {
+            return Status::Ok;
+        }
+    }
+    return Status::Error;
 }
 
 
@@ -691,20 +697,24 @@ Status loco_cv_val_set_check(int32_t end_us)
 }
 
 
-Status loco_cv_val_set(int addr, int cv_num, int cv_val, int32_t timeout_us)
+Status loco_cv_val_set(int addr, int cv_num, int cv_val, int attempts)
 {
-    int32_t end_us = time_us_32() + timeout_us;
-    Status s = loco_cv_val_set_start(addr, cv_num, cv_val, end_us);
-    if (s != Status::Ok)
-        return s;
-    return loco_cv_val_set_check(end_us);
+    while (attempts-- > 0) {
+        int32_t end_us = time_us_32() + loco_cv_op_timeout_us;
+        if (loco_cv_val_set_start(addr, cv_num, cv_val, end_us) == Status::Ok &&
+            loco_cv_val_set_check(end_us) == Status::Ok) {
+            return Status::Ok;
+        }
+    }
+    return Status::Error;
 }
 
 
 // loco_cv_bit_set ////////////////////////////////////////////////////////////
 
 
-Status loco_cv_bit_set_start(int addr, int cv_num, int b_num, int b_val, int32_t end_us)
+Status loco_cv_bit_set_start(int addr, int cv_num, int b_num, int b_val,
+                             int32_t end_us)
 {
     char req_msg[req_msg_len_max];
     snprintf(req_msg, req_msg_len_max, "L %d C %d B %d S %d", addr, cv_num,
@@ -723,13 +733,79 @@ Status loco_cv_bit_set_check(int32_t end_us)
 }
 
 
-Status loco_cv_bit_set(int addr, int cv_num, int b_num, int b_val, int32_t timeout_us)
+Status loco_cv_bit_set(int addr, int cv_num, int b_num, int b_val, int attempts)
 {
-    int32_t end_us = time_us_32() + timeout_us;
-    Status s = loco_cv_bit_set_start(addr, cv_num, b_num, b_val, end_us);
+    while (attempts-- > 0) {
+        int32_t end_us = time_us_32() + loco_cv_op_timeout_us;
+        if (loco_cv_bit_set_start(addr, cv_num, b_num, b_val, end_us) ==
+                Status::Ok &&
+            loco_cv_bit_set_check(end_us) == Status::Ok) {
+            return Status::Ok;
+        }
+    }
+    return Status::Error;
+}
+
+
+// debug_get //////////////////////////////////////////////////////////////////
+
+
+Status debug_get_start(int code, int32_t end_us)
+{
+    char req_msg[req_msg_len_max];
+    snprintf(req_msg, req_msg_len_max, "D %d G", code);
+    return req_send(req_msg, end_us);
+}
+
+
+Status debug_get_check(int &val, int32_t end_us)
+{
+    char rsp_msg[rsp_msg_len_max];
+    Status s = rsp_recv(rsp_msg, end_us);
     if (s != Status::Ok)
         return s;
-    return loco_cv_bit_set_check(end_us);
+    return sscanf(rsp_msg, "OK %d", &val) == 1 ? Status::Ok : Status::Error;
+}
+
+
+Status debug_get(int code, int &val, int32_t timeout_us)
+{
+    int32_t end_us = time_us_32() + timeout_us;
+    Status s = debug_get_start(code, end_us);
+    if (s != Status::Ok)
+        return s;
+    return debug_get_check(val, end_us);
+}
+
+
+// debug_set //////////////////////////////////////////////////////////////////
+
+
+Status debug_set_start(int code, int val, int32_t end_us)
+{
+    char req_msg[req_msg_len_max];
+    snprintf(req_msg, req_msg_len_max, "D %d S %d", code, val);
+    return req_send(req_msg, end_us);
+}
+
+
+Status debug_set_check(int32_t end_us)
+{
+    char rsp_msg[rsp_msg_len_max];
+    Status s = rsp_recv(rsp_msg, end_us);
+    if (s != Status::Ok)
+        return s;
+    return strncmp(rsp_msg, "OK", 2) == 0 ? Status::Ok : Status::Error;
+}
+
+
+Status debug_set(int code, int val, int32_t timeout_us)
+{
+    int32_t end_us = time_us_32() + timeout_us;
+    Status s = debug_set_start(code, val, end_us);
+    if (s != Status::Ok)
+        return s;
+    return debug_set_check(end_us);
 }
 
 
