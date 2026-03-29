@@ -66,6 +66,7 @@ private:
 
     ///// Debug
 
+public:
     // These are used to assert a GPIO on some event to trigger a scope.
     // All default to -1 (disabled).
     static int dbg_read;    // asserted for duration of RailCom::read()

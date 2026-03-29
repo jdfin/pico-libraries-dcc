@@ -64,8 +64,8 @@ void RailCom::read() // called in interrupt context
     } // for (_pkt_len...)
 
     // debug: trigger on not receiving all bytes
-    if (dbg_short >= 0 && _pkt_len != pkt_max) {
-        DbgGpio d(dbg_short);
+    if (dbg_junk >= 0 && _pkt_len != pkt_max) {
+        DbgGpio d(dbg_junk);
         [[maybe_unused]] volatile int i = 0;
     }
 
@@ -203,7 +203,10 @@ char *RailCom::show(char *buf, int buf_len) const
     if (_pkt_len == 0) {
         b += snprintf(b, e - b, "[no data]");
     } else if (_ch1_msg_cnt == 0 && _ch2_msg_cnt == 0) {
-        b += snprintf(b, e - b, "[corrupt]");
+        b += snprintf(b, e - b, "[corrupt:");
+        for (int i = 0; i < _pkt_len; i++)
+            b += snprintf(b, e - b, " %02x", _enc[i]);
+        b += snprintf(b, e - b, "]");
     } else {
         // show channel 1
         if (_ch1_msg_cnt > 0) {
