@@ -104,10 +104,10 @@ static void init()
     SysLed::pattern(50, 1950);
 
     printf("\n");
-    printf("%s on GPIO %d\n", prog_name, dcc_sig_gpio);
+    printf("%s on GPIO %d\n", prog_name, dcc_bit_gpio);
     printf("\n");
 
-    Edges::init(dcc_sig_gpio);
+    Edges::init(dcc_bit_gpio);
 
     pio_tick_hz = Edges::get_tick_hz();
     assert(pio_tick_hz > 0);

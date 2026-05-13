@@ -53,7 +53,7 @@ int main()
 
     RailCom::dbg_init();
 
-    DccApi::init(dcc_sig_gpio, dcc_pwr_gpio, dcc_adc_gpio, dcc_rcom_gpio,
+    DccApi::init(dcc_bit_gpio, dcc_pwr_gpio, dcc_adc_gpio, dcc_rcom_gpio,
                  dcc_rcom_uart);
 
     //DccApi::notify(dcc_cmd_notify, 0);

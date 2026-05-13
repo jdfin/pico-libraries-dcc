@@ -82,7 +82,7 @@ int main()
 
     argv.verbosity(1);
 
-    DccApi::init(dcc_sig_gpio, dcc_pwr_gpio, dcc_adc_gpio, dcc_rcom_gpio,
+    DccApi::init(dcc_bit_gpio, dcc_pwr_gpio, dcc_adc_gpio, dcc_rcom_gpio,
                  dcc_rcom_uart);
 
     DccApi::notify(dcc_cmd_notify);

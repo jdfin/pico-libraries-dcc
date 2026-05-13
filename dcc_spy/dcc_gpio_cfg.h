@@ -13,4 +13,4 @@
 //                 GND | 8            33 | D7  Signal (dcc)
 //                     +-----------------+
 
-constexpr int dcc_sig_gpio = 7;
+constexpr int dcc_bit_gpio = 7;

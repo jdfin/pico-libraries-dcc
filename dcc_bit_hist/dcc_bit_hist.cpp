@@ -89,7 +89,7 @@ static void init()
 
     SysLed::pattern(50, 1950);
 
-    Edges::init(dcc_sig_gpio);
+    Edges::init(dcc_bit_gpio);
 
     uint32_t sys_clk_hz = clock_get_hz(clk_sys);
 
