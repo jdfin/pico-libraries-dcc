@@ -1,4 +1,4 @@
-#include "dcc_bit.h"
+#include "dcc/dcc_bit.h"
 
 #include <cassert>
 #include <climits>

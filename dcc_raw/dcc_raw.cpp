@@ -11,13 +11,13 @@
 #include "pico/stdlib.h"
 #include "pico/time.h"
 // misc
-#include "buf_log.h"
-#include "sys_led.h"
+#include "misc/buf_log.h"
+#include "misc/sys_led.h"
 // dcc
-#include "dcc_api.h"
+#include "dcc/dcc_api.h"
 #include "dcc_gpio_cfg.h"
-#include "dcc_pkt.h"
-#include "railcom.h"
+#include "dcc/dcc_pkt.h"
+#include "dcc/railcom.h"
 
 //int RailCom::dbg_junk = 22;
 

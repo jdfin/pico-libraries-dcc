@@ -2,11 +2,11 @@
 #include <cstdint>
 #include <cstring>
 
-#include "dcc_adc.h"
-#include "dcc_command.h"
-#include "dcc_pkt.h"
-#include "dcc_pkt2.h"
-#include "dcc_spec.h"
+#include "dcc/dcc_adc.h"
+#include "dcc/dcc_command.h"
+#include "dcc/dcc_pkt.h"
+#include "dcc/dcc_pkt2.h"
+#include "dcc/dcc_spec.h"
 #include "test.h"
 
 // Helper: get packet type by decoding bytes (works for ops packets)

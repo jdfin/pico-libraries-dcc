@@ -11,13 +11,13 @@
 #include "pico/stdlib.h"
 #include "pico/time.h"
 // misc
-#include "argv.h"
-#include "str_ops.h"
-#include "sys_led.h"
+#include "misc/argv.h"
+#include "misc/str_ops.h"
+#include "misc/sys_led.h"
 // dcc
-#include "dcc_api.h"
+#include "dcc/dcc_api.h"
 #include "dcc_gpio_cfg.h"
-#include "dcc_pkt.h"
+#include "dcc/dcc_pkt.h"
 
 // A command is a sequence of tokens, ending with newline.
 //

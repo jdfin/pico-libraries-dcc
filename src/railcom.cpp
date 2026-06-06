@@ -1,16 +1,16 @@
 
-#include "railcom.h"
+#include "dcc/railcom.h"
 
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 
-#include "dbg_gpio.h"
+#include "misc/dbg_gpio.h"
 #include "hardware/gpio.h"
 #include "hardware/uart.h"
-#include "railcom_msg.h"
-#include "railcom_spec.h"
+#include "dcc/railcom_msg.h"
+#include "dcc/railcom_spec.h"
 
 
 int RailCom::dbg_read __attribute((weak)) = -1;

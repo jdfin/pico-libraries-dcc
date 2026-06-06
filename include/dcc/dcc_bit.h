@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "dcc_spec.h"
+#include "dcc/dcc_spec.h"
 
 
 // This is used for decoding an incoming DCC bitstream.

@@ -8,11 +8,11 @@
 #include "pico/stdlib.h"
 #include "pico/util/queue.h"
 // misc
-#include "buf_log.h" // XXX
-#include "str_ops.h" // strxcpy()
+#include "misc/buf_log.h" // XXX
+#include "misc/str_ops.h" // strxcpy()
 // dcc
-#include "dcc_api.h"
-#include "dcc_srv.h"
+#include "dcc/dcc_api.h"
+#include "dcc/dcc_srv.h"
 
 // This runs on core 0, and is responsible for creating the inter-core message
 // channel and starting core 1 (running dcc_srv). From then on, methods here

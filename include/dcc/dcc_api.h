@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "dcc_srv.h"
+#include "dcc/dcc_srv.h"
 #include "hardware/uart.h"
 
 namespace DccApi {

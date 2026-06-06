@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include "dbg_gpio.h"
+#include "misc/dbg_gpio.h"
 
 class DccAdc
 {

@@ -4,11 +4,11 @@
 #include <cstdio>
 #include <list>
 
-#include "buf_log.h"
-#include "dcc_bitstream.h"
-#include "dcc_loco.h"
-#include "dcc_pkt.h"
-#include "dcc_pkt2.h"
+#include "misc/buf_log.h"
+#include "dcc/dcc_bitstream.h"
+#include "dcc/dcc_loco.h"
+#include "dcc/dcc_pkt.h"
+#include "dcc/dcc_pkt2.h"
 #include "hardware/uart.h"
 
 #undef INCLUDE_ACK_DBG

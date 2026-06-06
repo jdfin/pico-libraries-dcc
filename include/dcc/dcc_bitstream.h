@@ -1,12 +1,12 @@
 #pragma once
 
-#include "dcc_pkt2.h"
-#include "dcc_spec.h"
+#include "dcc/dcc_pkt2.h"
+#include "dcc/dcc_spec.h"
 #include "hardware/pwm.h"
 #include "hardware/uart.h"
 #include "pico/types.h"
-#include "railcom.h"
-#include "timer.h"
+#include "dcc/railcom.h"
+#include "misc/timer.h"
 
 class DccCommand;
 

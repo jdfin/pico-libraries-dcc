@@ -3,8 +3,8 @@
 #include <cstdint>
 
 #include "hardware/uart.h"
-#include "railcom_msg.h"
-#include "railcom_spec.h"
+#include "dcc/railcom_msg.h"
+#include "dcc/railcom_spec.h"
 
 
 class RailCom

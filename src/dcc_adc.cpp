@@ -1,11 +1,11 @@
-#include "dcc_adc.h"
+#include "dcc/dcc_adc.h"
 
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 
-#include "dbg_gpio.h"
+#include "misc/dbg_gpio.h"
 #include "hardware/adc.h"
 
 

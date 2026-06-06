@@ -8,12 +8,12 @@
 #include "pico/stdio_usb.h"
 #include "pico/stdlib.h"
 // pio_edges
-#include "pio_edges.h"
+#include "pio_edges/pio_edges.h"
 // dcc
-#include "dcc_spec.h"
+#include "dcc/dcc_spec.h"
 // misc
-#include "pretty_io.h"
-#include "sys_led.h"
+#include "misc/pretty_io.h"
+#include "misc/sys_led.h"
 //
 #include "dcc_gpio_cfg.h"
 

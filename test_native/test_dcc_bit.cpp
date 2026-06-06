@@ -2,9 +2,9 @@
 #include <cstdint>
 #include <cstring>
 
-#include "dcc_bit.h"
-#include "dcc_pkt.h"
-#include "dcc_spec.h"
+#include "dcc/dcc_bit.h"
+#include "dcc/dcc_pkt.h"
+#include "dcc/dcc_spec.h"
 #include "test.h"
 
 // --- to_half classification ---

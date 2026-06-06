@@ -1,5 +1,5 @@
 
-#include "railcom_msg.h"
+#include "dcc/railcom_msg.h"
 
 #include <cassert>
 #include <cstdint>

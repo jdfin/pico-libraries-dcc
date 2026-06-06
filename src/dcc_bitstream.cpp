@@ -9,14 +9,14 @@
 #include "hardware/pwm.h"
 #include "hardware/uart.h"
 // misc
-#include "pwm_extra.h"
+#include "misc/pwm_extra.h"
 // dcc
-#include "buf_log.h"
-#include "dcc_bitstream.h"
-#include "dcc_command.h"
-#include "dcc_loco.h"
-#include "dcc_pkt.h"
-#include "railcom.h"
+#include "misc/buf_log.h"
+#include "dcc/dcc_bitstream.h"
+#include "dcc/dcc_command.h"
+#include "dcc/dcc_loco.h"
+#include "dcc/dcc_pkt.h"
+#include "dcc/railcom.h"
 
 #define LOG_DCC 1
 #define LOG_RAILCOM 1

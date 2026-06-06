@@ -1,7 +1,7 @@
 // Stub DccAdc for native tests
 // Provides controllable return values for testing DccCommand
 
-#include "dcc_adc.h"
+#include "dcc/dcc_adc.h"
 
 // Controllable stub state
 static uint16_t _stub_short_avg_ma = 0;

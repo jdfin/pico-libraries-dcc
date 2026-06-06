@@ -3,7 +3,7 @@
 #include <cassert>
 #include <cstdint>
 
-#include "dcc_pkt.h"
+#include "dcc/dcc_pkt.h"
 
 // DccPkt2 knows:
 //   packet data (currently in DccPkt)

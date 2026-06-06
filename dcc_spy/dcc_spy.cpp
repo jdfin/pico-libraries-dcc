@@ -3,21 +3,21 @@
 #include <cstdint>
 #include <cstdio>
 
-#include "dcc_bit.h"
+#include "dcc/dcc_bit.h"
 #include "dcc_gpio_cfg.h"
-#include "dcc_pkt.h"
+#include "dcc/dcc_pkt.h"
 #include "pico/multicore.h"
 #include "pico/stdio_usb.h"
 #include "pico/stdlib.h"
-#include "pio_edges.h"
-#include "sys_led.h"
+#include "pio_edges/pio_edges.h"
+#include "misc/sys_led.h"
 
 #undef INCLUDE_DISPLAY
 
 #ifdef INCLUDE_DISPLAY
 #include "consolas_24.h"
 #include "consolas_italic_24.h"
-#include "ws24.h"
+#include "framebuffer/ws24.h"
 #endif
 
 static const char *prog_name = "DCC Spy";

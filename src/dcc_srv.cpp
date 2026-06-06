@@ -12,18 +12,18 @@
 #include "pico/time.h"
 #include "pico/util/queue.h"
 // misc
-#include "args.h"
-#include "str_ops.h"
-#include "sys_led.h"
+#include "misc/args.h"
+#include "misc/str_ops.h"
+#include "misc/sys_led.h"
 // dcc
-#include "dcc_adc.h"
-#include "dcc_bitstream.h"
-#include "dcc_command.h"
-#include "dcc_cv.h"
-#include "dcc_loco.h"
-#include "dcc_pkt.h"
-#include "dcc_srv.h"
-#include "railcom.h"
+#include "dcc/dcc_adc.h"
+#include "dcc/dcc_bitstream.h"
+#include "dcc/dcc_command.h"
+#include "dcc/dcc_cv.h"
+#include "dcc/dcc_loco.h"
+#include "dcc/dcc_pkt.h"
+#include "dcc/dcc_srv.h"
+#include "dcc/railcom.h"
 
 
 queue_t req_queue; // requests, core0 -> core1

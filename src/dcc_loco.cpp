@@ -1,15 +1,15 @@
-#include "dcc_loco.h"
+#include "dcc/dcc_loco.h"
 
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 
-#include "buf_log.h"
-#include "dcc_pkt.h"
+#include "misc/buf_log.h"
+#include "dcc/dcc_pkt.h"
 #include "hardware/timer.h"
-#include "railcom_msg.h"
-#include "railcom_spec.h"
+#include "dcc/railcom_msg.h"
+#include "dcc/railcom_spec.h"
 
 DccLoco::DccLoco(int address) :
     _seq(0),

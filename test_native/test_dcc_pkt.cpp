@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <cstring>
 
-#include "dcc_pkt.h"
+#include "dcc/dcc_pkt.h"
 #include "test.h"
 
 // Helper: get packet type by decoding raw bytes

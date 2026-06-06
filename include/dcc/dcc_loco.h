@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "dcc_pkt.h"
+#include "dcc/dcc_pkt.h"
 
 class RailComMsg;
 

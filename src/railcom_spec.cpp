@@ -1,4 +1,4 @@
-#include "railcom_spec.h"
+#include "dcc/railcom_spec.h"
 
 #include <cassert>
 #include <cstdint>
